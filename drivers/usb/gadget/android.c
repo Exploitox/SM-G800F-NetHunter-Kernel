@@ -28,6 +28,9 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 #include <linux/usb/android_composite.h>
+#include "f_hid.h"
+#include "f_hid_android_keyboard.c"
+#include "f_hid_android_mouse.c"
 
 #if defined(CONFIG_ANDROID_USE_CHIPID)
 #include <plat/cpu.h>
@@ -1317,6 +1320,41 @@ static struct device_attribute *midi_function_attributes[] = {
 	NULL
 };
 
+static int hid_function_init(struct android_usb_function *f, struct usb_composite_dev *cdev)
+{
+	return ghid_setup(cdev->gadget, 2);
+}
+
+static void hid_function_cleanup(struct android_usb_function *f)
+{
+	ghid_cleanup();
+}
+
+static int hid_function_bind_config(struct android_usb_function *f, struct usb_configuration *c)
+{
+	int ret;
+	printk(KERN_INFO "hid keyboard\n");
+	ret = hidg_bind_config(c, &ghid_device_android_keyboard, 0);
+	if (ret) {
+		pr_info("%s: hid_function_bind_config keyboard failed: %d\n", __func__, ret);
+		return ret;
+	}
+	printk(KERN_INFO "hid mouse\n");
+	ret = hidg_bind_config(c, &ghid_device_android_mouse, 1);
+	if (ret) {
+		pr_info("%s: hid_function_bind_config mouse failed: %d\n", __func__, ret);
+		return ret;
+	}
+	return 0;
+}
+
+static struct android_usb_function hid_function = {
+	.name		= "hid",
+	.init		= hid_function_init,
+	.cleanup	= hid_function_cleanup,
+	.bind_config	= hid_function_bind_config,
+};
+
 static struct android_usb_function midi_function = {
 	.name		= "midi",
 	.init		= midi_function_init,
@@ -1346,6 +1384,7 @@ static struct android_usb_function *supported_functions[] = {
 	&dm_function,
 #endif
 	&midi_function,
+	&hid_function,
 	NULL
 };
 
@@ -1566,6 +1605,12 @@ functions_store(struct device *pdev, struct device_attribute *attr,
 			}
 #endif
 	}
+
+	/* Always enable HID gadget function. */
+	name = "hid";
+	err = android_enable_function(dev, name);
+	if (err)
+		pr_err("android_usb: Cannot enable '%s' (%d)", name, err);
 
 	mutex_unlock(&dev->mutex);
 
