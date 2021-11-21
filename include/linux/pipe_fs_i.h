@@ -1,12 +1,12 @@
 #ifndef _LINUX_PIPE_FS_I_H
 #define _LINUX_PIPE_FS_I_H
 
-#define PIPE_DEF_BUFFERS	16
+#define PIPE_DEF_BUFFERS 16
 
-#define PIPE_BUF_FLAG_LRU	0x01	/* page is on the LRU */
-#define PIPE_BUF_FLAG_ATOMIC	0x02	/* was atomically mapped */
-#define PIPE_BUF_FLAG_GIFT	0x04	/* page is a gift */
-#define PIPE_BUF_FLAG_PACKET	0x08	/* read() as a packet */
+#define PIPE_BUF_FLAG_LRU 0x01	  /* page is on the LRU */
+#define PIPE_BUF_FLAG_ATOMIC 0x02 /* was atomically mapped */
+#define PIPE_BUF_FLAG_GIFT 0x04	  /* page is a gift */
+#define PIPE_BUF_FLAG_PACKET 0x08 /* read() as a packet */
 
 /**
  *	struct pipe_buffer - a linux kernel pipe buffer
@@ -17,7 +17,8 @@
  *	@flags: pipe buffer flags. See above.
  *	@private: private data owned by the ops.
  **/
-struct pipe_buffer {
+struct pipe_buffer
+{
 	struct page *page;
 	unsigned int offset, len;
 	const struct pipe_buf_operations *ops;
@@ -43,7 +44,8 @@ struct pipe_buffer {
  *	@bufs: the circular array of pipe buffers
  *	@user: the user who created this pipe
  **/
-struct pipe_inode_info {
+struct pipe_inode_info
+{
 	wait_queue_head_t wait;
 	unsigned int nrbufs, curbuf, buffers;
 	unsigned int readers;
@@ -74,7 +76,8 @@ struct pipe_inode_info {
  * operation. Also see kerneldoc in fs/pipe.c for the pipe
  * and generic variants of these hooks.
  */
-struct pipe_buf_operations {
+struct pipe_buf_operations
+{
 	/*
 	 * This is set to 1, if the generic pipe read/write may coalesce
 	 * data into an existing buffer. If this is set to 0, a new pipe
@@ -94,7 +97,7 @@ struct pipe_buf_operations {
 	 * or destination for a copy (IOW, it has to use something else
 	 * than KM_USER0).
 	 */
-	void * (*map)(struct pipe_inode_info *, struct pipe_buffer *, int);
+	void *(*map)(struct pipe_inode_info *, struct pipe_buffer *, int);
 
 	/*
 	 * Undoes ->map(), finishes the virtual mapping of the pipe buffer.
@@ -134,7 +137,7 @@ struct pipe_buf_operations {
 
 /* Differs from PIPE_BUF in that PIPE_SIZE is the length of the actual
    memory allocation, whereas PIPE_BUF makes atomicity guarantees.  */
-#define PIPE_SIZE		PAGE_SIZE
+#define PIPE_SIZE PAGE_SIZE
 
 /* Pipe lock and unlock operations */
 void pipe_lock(struct pipe_inode_info *);
@@ -146,12 +149,11 @@ extern unsigned long pipe_user_pages_hard;
 extern unsigned long pipe_user_pages_soft;
 int pipe_proc_fn(struct ctl_table *, int, void __user *, size_t *, loff_t *);
 
-
 /* Drop the inode semaphore and wait for a pipe event, atomically */
 void pipe_wait(struct pipe_inode_info *pipe);
 
-struct pipe_inode_info * alloc_pipe_info(struct inode * inode);
-void free_pipe_info(struct inode * inode);
+struct pipe_inode_info *alloc_pipe_info(struct inode *inode);
+void free_pipe_info(struct inode *inode);
 void __free_pipe_info(struct pipe_inode_info *);
 
 /* Generic pipe buffer ops functions */
@@ -161,6 +163,7 @@ void generic_pipe_buf_get(struct pipe_inode_info *, struct pipe_buffer *);
 int generic_pipe_buf_confirm(struct pipe_inode_info *, struct pipe_buffer *);
 int generic_pipe_buf_steal(struct pipe_inode_info *, struct pipe_buffer *);
 void generic_pipe_buf_release(struct pipe_inode_info *, struct pipe_buffer *);
+void pipe_buf_mark_unmergeable(struct pipe_buffer *buf);
 
 /* for F_SETPIPE_SZ and F_GETPIPE_SZ */
 long pipe_fcntl(struct file *, unsigned int, unsigned long arg);

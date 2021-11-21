@@ -41,7 +41,8 @@
 
 #include "hci_uart.h"
 
-struct ath_struct {
+struct ath_struct
+{
 	struct hci_uart *hu;
 	unsigned int cur_sleep;
 
@@ -94,7 +95,8 @@ static void ath_hci_uart_work(struct work_struct *work)
 	tty = hu->tty;
 
 	/* verify and wake up controller */
-	if (ath->cur_sleep) {
+	if (ath->cur_sleep)
+	{
 		status = ath_wakeup_ar3k(tty);
 		if (!(status & TIOCM_CTS))
 			return;
@@ -111,6 +113,9 @@ static int ath_open(struct hci_uart *hu)
 	struct ath_struct *ath;
 
 	BT_DBG("hu %p", hu);
+
+	if (!hci_uart_has_flow_control(hu))
+		return -EOPNOTSUPP;
 
 	ath = kzalloc(sizeof(*ath), GFP_KERNEL);
 	if (!ath)
@@ -162,7 +167,8 @@ static int ath_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 {
 	struct ath_struct *ath = hu->priv;
 
-	if (bt_cb(skb)->pkt_type == HCI_SCODATA_PKT) {
+	if (bt_cb(skb)->pkt_type == HCI_SCODATA_PKT)
+	{
 		kfree_skb(skb);
 		return 0;
 	}
@@ -171,7 +177,8 @@ static int ath_enqueue(struct hci_uart *hu, struct sk_buff *skb)
 	 * Update power management enable flag with parameters of
 	 * HCI sleep enable vendor specific HCI command.
 	 */
-	if (bt_cb(skb)->pkt_type == HCI_COMMAND_PKT) {
+	if (bt_cb(skb)->pkt_type == HCI_COMMAND_PKT)
+	{
 		struct hci_command_hdr *hdr = (void *)skb->data;
 
 		if (__le16_to_cpu(hdr->opcode) == HCI_OP_ATH_SLEEP)
@@ -204,7 +211,8 @@ static int ath_recv(struct hci_uart *hu, void *data, int count)
 	int ret;
 
 	ret = hci_recv_stream_fragment(hu->hdev, data, count);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		BT_ERR("Frame Reassembly Failed");
 		return ret;
 	}

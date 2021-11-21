@@ -36,14 +36,15 @@
  */
 static int ext4_release_file(struct inode *inode, struct file *filp)
 {
-	if (ext4_test_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE)) {
+	if (ext4_test_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE))
+	{
 		ext4_alloc_da_blocks(inode);
 		ext4_clear_inode_state(inode, EXT4_STATE_DA_ALLOC_CLOSE);
 	}
 	/* if we are the last writer on the inode, drop the block reservation */
 	if ((filp->f_mode & FMODE_WRITE) &&
-			(atomic_read(&inode->i_writecount) == 1) &&
-		        !EXT4_I(inode)->i_reserved_data_blocks)
+		(atomic_read(&inode->i_writecount) == 1) &&
+		!EXT4_I(inode)->i_reserved_data_blocks)
 	{
 		down_write(&EXT4_I(inode)->i_data_sem);
 		ext4_discard_preallocations(inode);
@@ -73,14 +74,14 @@ static void ext4_aiodio_wait(struct inode *inode)
  */
 static int
 ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
-		   unsigned long nr_segs, loff_t pos)
+				   unsigned long nr_segs, loff_t pos)
 {
 	struct super_block *sb = inode->i_sb;
 	int blockmask = sb->s_blocksize - 1;
 	size_t count = iov_length(iov, nr_segs);
 	loff_t final_size = pos + count;
 
-	if (pos >= i_size_read(inode))
+	if (pos >= ALIGN(i_size_read(inode), sb->s_blocksize))
 		return 0;
 
 	if ((pos & blockmask) || (final_size & blockmask))
@@ -91,7 +92,7 @@ ext4_unaligned_aio(struct inode *inode, const struct iovec *iov,
 
 static ssize_t
 ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
-		unsigned long nr_segs, loff_t pos)
+				unsigned long nr_segs, loff_t pos)
 {
 	struct inode *inode = iocb->ki_filp->f_path.dentry->d_inode;
 	int unaligned_aio = 0;
@@ -102,33 +103,38 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
 	 * is smaller than s_maxbytes, which is for extent-mapped files.
 	 */
 
-	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))) {
+	if (!(ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS)))
+	{
 		struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
 		size_t length = iov_length(iov, nr_segs);
 
 		if ((pos > sbi->s_bitmap_maxbytes ||
-		    (pos == sbi->s_bitmap_maxbytes && length > 0)))
+			 (pos == sbi->s_bitmap_maxbytes && length > 0)))
 			return -EFBIG;
 
-		if (pos + length > sbi->s_bitmap_maxbytes) {
+		if (pos + length > sbi->s_bitmap_maxbytes)
+		{
 			nr_segs = iov_shorten((struct iovec *)iov, nr_segs,
-					      sbi->s_bitmap_maxbytes - pos);
+								  sbi->s_bitmap_maxbytes - pos);
 		}
-	} else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
-		   !is_sync_kiocb(iocb))) {
+	}
+	else if (unlikely((iocb->ki_filp->f_flags & O_DIRECT) &&
+					  !is_sync_kiocb(iocb)))
+	{
 		unaligned_aio = ext4_unaligned_aio(inode, iov, nr_segs, pos);
 	}
 
 	/* Unaligned direct AIO must be serialized; see comment above */
-	if (unaligned_aio) {
+	if (unaligned_aio)
+	{
 		static unsigned long unaligned_warn_time;
 
 		/* Warn about this once per day */
-		if (printk_timed_ratelimit(&unaligned_warn_time, 60*60*24*HZ))
+		if (printk_timed_ratelimit(&unaligned_warn_time, 60 * 60 * 24 * HZ))
 			ext4_msg(inode->i_sb, KERN_WARNING,
-				 "Unaligned AIO/DIO on inode %ld by %s; "
-				 "performance will be poor.",
-				 inode->i_ino, current->comm);
+					 "Unaligned AIO/DIO on inode %ld by %s; "
+					 "performance will be poor.",
+					 inode->i_ino, current->comm);
 		mutex_lock(ext4_aio_mutex(inode));
 		ext4_aiodio_wait(inode);
 	}
@@ -142,8 +148,8 @@ ext4_file_write(struct kiocb *iocb, const struct iovec *iov,
 }
 
 static const struct vm_operations_struct ext4_file_vm_ops = {
-	.fault		= filemap_fault,
-	.page_mkwrite   = ext4_page_mkwrite,
+	.fault = filemap_fault,
+	.page_mkwrite = ext4_page_mkwrite,
 };
 
 static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
@@ -158,7 +164,7 @@ static int ext4_file_mmap(struct file *file, struct vm_area_struct *vma)
 	return 0;
 }
 
-static int ext4_file_open(struct inode * inode, struct file * filp)
+static int ext4_file_open(struct inode *inode, struct file *filp)
 {
 	struct super_block *sb = inode->i_sb;
 	struct ext4_sb_info *sbi = EXT4_SB(inode->i_sb);
@@ -168,7 +174,8 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	char buf[64], *cp;
 
 	if (unlikely(!(sbi->s_mount_flags & EXT4_MF_MNTDIR_SAMPLED) &&
-		     !(sb->s_flags & MS_RDONLY))) {
+				 !(sb->s_flags & MS_RDONLY)))
+	{
 		sbi->s_mount_flags |= EXT4_MF_MNTDIR_SAMPLED;
 		/*
 		 * Sample where the filesystem has been mounted and
@@ -180,9 +187,10 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 		path.mnt = mnt;
 		path.dentry = mnt->mnt_root;
 		cp = d_path(&path, buf, sizeof(buf));
-		if (!IS_ERR(cp)) {
+		if (!IS_ERR(cp))
+		{
 			strlcpy(sbi->s_es->s_last_mounted, cp,
-				sizeof(sbi->s_es->s_last_mounted));
+					sizeof(sbi->s_es->s_last_mounted));
 			ext4_mark_super_dirty(sb);
 		}
 	}
@@ -190,12 +198,15 @@ static int ext4_file_open(struct inode * inode, struct file * filp)
 	 * Set up the jbd2_inode if we are opening the inode for
 	 * writing and the journal is present
 	 */
-	if (sbi->s_journal && !ei->jinode && (filp->f_mode & FMODE_WRITE)) {
+	if (sbi->s_journal && !ei->jinode && (filp->f_mode & FMODE_WRITE))
+	{
 		struct jbd2_inode *jinode = jbd2_alloc_inode(GFP_KERNEL);
 
 		spin_lock(&inode->i_lock);
-		if (!ei->jinode) {
-			if (!jinode) {
+		if (!ei->jinode)
+		{
+			if (!jinode)
+			{
 				spin_unlock(&inode->i_lock);
 				return -ENOMEM;
 			}
@@ -229,34 +240,33 @@ loff_t ext4_llseek(struct file *file, loff_t offset, int origin)
 }
 
 const struct file_operations ext4_file_operations = {
-	.llseek		= ext4_llseek,
-	.read		= do_sync_read,
-	.write		= do_sync_write,
-	.aio_read	= generic_file_aio_read,
-	.aio_write	= ext4_file_write,
+	.llseek = ext4_llseek,
+	.read = do_sync_read,
+	.write = do_sync_write,
+	.aio_read = generic_file_aio_read,
+	.aio_write = ext4_file_write,
 	.unlocked_ioctl = ext4_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl	= ext4_compat_ioctl,
+	.compat_ioctl = ext4_compat_ioctl,
 #endif
-	.mmap		= ext4_file_mmap,
-	.open		= ext4_file_open,
-	.release	= ext4_release_file,
-	.fsync		= ext4_sync_file,
-	.splice_read	= generic_file_splice_read,
-	.splice_write	= generic_file_splice_write,
-	.fallocate	= ext4_fallocate,
+	.mmap = ext4_file_mmap,
+	.open = ext4_file_open,
+	.release = ext4_release_file,
+	.fsync = ext4_sync_file,
+	.splice_read = generic_file_splice_read,
+	.splice_write = generic_file_splice_write,
+	.fallocate = ext4_fallocate,
 };
 
 const struct inode_operations ext4_file_inode_operations = {
-	.setattr	= ext4_setattr,
-	.getattr	= ext4_getattr,
+	.setattr = ext4_setattr,
+	.getattr = ext4_getattr,
 #ifdef CONFIG_EXT4_FS_XATTR
-	.setxattr	= generic_setxattr,
-	.getxattr	= generic_getxattr,
-	.listxattr	= ext4_listxattr,
-	.removexattr	= generic_removexattr,
+	.setxattr = generic_setxattr,
+	.getxattr = generic_getxattr,
+	.listxattr = ext4_listxattr,
+	.removexattr = generic_removexattr,
 #endif
-	.get_acl	= ext4_get_acl,
-	.fiemap		= ext4_fiemap,
+	.get_acl = ext4_get_acl,
+	.fiemap = ext4_fiemap,
 };
-

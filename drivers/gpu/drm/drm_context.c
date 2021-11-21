@@ -56,7 +56,7 @@
  * in drm_device::ctx_idr, while holding the drm_device::struct_mutex
  * lock.
  */
-void drm_ctxbitmap_free(struct drm_device * dev, int ctx_handle)
+void drm_ctxbitmap_free(struct drm_device *dev, int ctx_handle)
 {
 	mutex_lock(&dev->struct_mutex);
 	idr_remove(&dev->ctx_idr, ctx_handle);
@@ -72,20 +72,22 @@ void drm_ctxbitmap_free(struct drm_device * dev, int ctx_handle)
  * Allocate a new idr from drm_device::ctx_idr while holding the
  * drm_device::struct_mutex lock.
  */
-static int drm_ctxbitmap_next(struct drm_device * dev)
+static int drm_ctxbitmap_next(struct drm_device *dev)
 {
 	int new_id;
 	int ret;
 
 again:
-	if (idr_pre_get(&dev->ctx_idr, GFP_KERNEL) == 0) {
+	if (idr_pre_get(&dev->ctx_idr, GFP_KERNEL) == 0)
+	{
 		DRM_ERROR("Out of memory expanding drawable idr\n");
 		return -ENOMEM;
 	}
 	mutex_lock(&dev->struct_mutex);
 	ret = idr_get_new_above(&dev->ctx_idr, NULL,
-				DRM_RESERVED_CONTEXTS, &new_id);
-	if (ret == -EAGAIN) {
+							DRM_RESERVED_CONTEXTS, &new_id);
+	if (ret == -EAGAIN)
+	{
 		mutex_unlock(&dev->struct_mutex);
 		goto again;
 	}
@@ -100,7 +102,7 @@ again:
  *
  * Initialise the drm_device::ctx_idr
  */
-int drm_ctxbitmap_init(struct drm_device * dev)
+int drm_ctxbitmap_init(struct drm_device *dev)
 {
 	idr_init(&dev->ctx_idr);
 	return 0;
@@ -114,7 +116,7 @@ int drm_ctxbitmap_init(struct drm_device * dev)
  * Free all idr members using drm_ctx_sarea_free helper function
  * while holding the drm_device::struct_mutex lock.
  */
-void drm_ctxbitmap_cleanup(struct drm_device * dev)
+void drm_ctxbitmap_cleanup(struct drm_device *dev)
 {
 	mutex_lock(&dev->struct_mutex);
 	idr_remove_all(&dev->ctx_idr);
@@ -140,7 +142,7 @@ void drm_ctxbitmap_cleanup(struct drm_device * dev)
  * returns its handle.
  */
 int drm_getsareactx(struct drm_device *dev, void *data,
-		    struct drm_file *file_priv)
+					struct drm_file *file_priv)
 {
 	struct drm_ctx_priv_map *request = data;
 	struct drm_local_map *map;
@@ -149,16 +151,19 @@ int drm_getsareactx(struct drm_device *dev, void *data,
 	mutex_lock(&dev->struct_mutex);
 
 	map = idr_find(&dev->ctx_idr, request->ctx_id);
-	if (!map) {
+	if (!map)
+	{
 		mutex_unlock(&dev->struct_mutex);
 		return -EINVAL;
 	}
 
 	request->handle = NULL;
-	list_for_each_entry(_entry, &dev->maplist, head) {
-		if (_entry->map == map) {
+	list_for_each_entry(_entry, &dev->maplist, head)
+	{
+		if (_entry->map == map)
+		{
 			request->handle =
-			    (void *)(unsigned long)_entry->user_token;
+				(void *)(unsigned long)_entry->user_token;
 			break;
 		}
 	}
@@ -184,23 +189,23 @@ int drm_getsareactx(struct drm_device *dev, void *data,
  * drm_device::ctx_idr with it.
  */
 int drm_setsareactx(struct drm_device *dev, void *data,
-		    struct drm_file *file_priv)
+					struct drm_file *file_priv)
 {
 	struct drm_ctx_priv_map *request = data;
 	struct drm_local_map *map = NULL;
 	struct drm_map_list *r_list = NULL;
 
 	mutex_lock(&dev->struct_mutex);
-	list_for_each_entry(r_list, &dev->maplist, head) {
-		if (r_list->map
-		    && r_list->user_token == (unsigned long) request->handle)
+	list_for_each_entry(r_list, &dev->maplist, head)
+	{
+		if (r_list->map && r_list->user_token == (unsigned long)request->handle)
 			goto found;
 	}
-      bad:
+bad:
 	mutex_unlock(&dev->struct_mutex);
 	return -EINVAL;
 
-      found:
+found:
 	map = r_list->map;
 	if (!map)
 		goto bad;
@@ -229,16 +234,18 @@ int drm_setsareactx(struct drm_device *dev, void *data,
  *
  * Attempt to set drm_device::context_flag.
  */
-static int drm_context_switch(struct drm_device * dev, int old, int new)
+static int drm_context_switch(struct drm_device *dev, int old, int new)
 {
-	if (test_and_set_bit(0, &dev->context_flag)) {
+	if (test_and_set_bit(0, &dev->context_flag))
+	{
 		DRM_ERROR("Reentering -- FIXME\n");
 		return -EBUSY;
 	}
 
 	DRM_DEBUG("Context switch from %d to %d\n", old, new);
 
-	if (new == dev->last_context) {
+	if (new == dev->last_context)
+	{
 		clear_bit(0, &dev->context_flag);
 		return 0;
 	}
@@ -258,12 +265,13 @@ static int drm_context_switch(struct drm_device * dev, int old, int new)
  * drm_device::context_wait.
  */
 static int drm_context_switch_complete(struct drm_device *dev,
-				       struct drm_file *file_priv, int new)
+									   struct drm_file *file_priv, int new)
 {
-	dev->last_context = new;	/* PRE/POST: This is the _only_ writer. */
+	dev->last_context = new; /* PRE/POST: This is the _only_ writer. */
 	dev->last_switch = jiffies;
 
-	if (!_DRM_LOCK_IS_HELD(file_priv->master->lock.hw_lock->lock)) {
+	if (!_DRM_LOCK_IS_HELD(file_priv->master->lock.hw_lock->lock))
+	{
 		DRM_ERROR("Lock isn't held after context switch\n");
 	}
 
@@ -286,15 +294,17 @@ static int drm_context_switch_complete(struct drm_device *dev,
  * \return zero on success or a negative number on failure.
  */
 int drm_resctx(struct drm_device *dev, void *data,
-	       struct drm_file *file_priv)
+			   struct drm_file *file_priv)
 {
 	struct drm_ctx_res *res = data;
 	struct drm_ctx ctx;
 	int i;
 
-	if (res->count >= DRM_RESERVED_CONTEXTS) {
+	if (res->count >= DRM_RESERVED_CONTEXTS)
+	{
 		memset(&ctx, 0, sizeof(ctx));
-		for (i = 0; i < DRM_RESERVED_CONTEXTS; i++) {
+		for (i = 0; i < DRM_RESERVED_CONTEXTS; i++)
+		{
 			ctx.handle = i;
 			if (copy_to_user(&res->contexts[i], &ctx, sizeof(ctx)))
 				return -EFAULT;
@@ -317,25 +327,31 @@ int drm_resctx(struct drm_device *dev, void *data,
  * Get a new handle for the context and copy to userspace.
  */
 int drm_addctx(struct drm_device *dev, void *data,
-	       struct drm_file *file_priv)
+			   struct drm_file *file_priv)
 {
 	struct drm_ctx_list *ctx_entry;
 	struct drm_ctx *ctx = data;
+	int tmp_handle;
 
-	ctx->handle = drm_ctxbitmap_next(dev);
-	if (ctx->handle == DRM_KERNEL_CONTEXT) {
+	tmp_handle = drm_ctxbitmap_next(dev);
+	if (tmp_handle == DRM_KERNEL_CONTEXT)
+	{
 		/* Skip kernel's context and get a new one. */
-		ctx->handle = drm_ctxbitmap_next(dev);
+		tmp_handle = drm_ctxbitmap_next(dev);
 	}
-	DRM_DEBUG("%d\n", ctx->handle);
-	if (ctx->handle == -1) {
+	DRM_DEBUG("%d\n", tmp_handle);
+	if (tmp_handle < 0)
+	{
 		DRM_DEBUG("Not enough free contexts.\n");
 		/* Should this return -EBUSY instead? */
-		return -ENOMEM;
+		return tmp_handle;
 	}
 
+	ctx->handle = tmp_handle;
+
 	ctx_entry = kmalloc(sizeof(*ctx_entry), GFP_KERNEL);
-	if (!ctx_entry) {
+	if (!ctx_entry)
+	{
 		DRM_DEBUG("out of memory\n");
 		return -ENOMEM;
 	}
@@ -389,7 +405,7 @@ int drm_getctx(struct drm_device *dev, void *data, struct drm_file *file_priv)
  * Calls context_switch().
  */
 int drm_switchctx(struct drm_device *dev, void *data,
-		  struct drm_file *file_priv)
+				  struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
 
@@ -409,7 +425,7 @@ int drm_switchctx(struct drm_device *dev, void *data,
  * Calls context_switch_complete().
  */
 int drm_newctx(struct drm_device *dev, void *data,
-	       struct drm_file *file_priv)
+			   struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
 
@@ -431,23 +447,27 @@ int drm_newctx(struct drm_device *dev, void *data,
  * If not the special kernel context, calls ctxbitmap_free() to free the specified context.
  */
 int drm_rmctx(struct drm_device *dev, void *data,
-	      struct drm_file *file_priv)
+			  struct drm_file *file_priv)
 {
 	struct drm_ctx *ctx = data;
 
 	DRM_DEBUG("%d\n", ctx->handle);
-	if (ctx->handle != DRM_KERNEL_CONTEXT) {
+	if (ctx->handle != DRM_KERNEL_CONTEXT)
+	{
 		if (dev->driver->context_dtor)
 			dev->driver->context_dtor(dev, ctx->handle);
 		drm_ctxbitmap_free(dev, ctx->handle);
 	}
 
 	mutex_lock(&dev->ctxlist_mutex);
-	if (!list_empty(&dev->ctxlist)) {
+	if (!list_empty(&dev->ctxlist))
+	{
 		struct drm_ctx_list *pos, *n;
 
-		list_for_each_entry_safe(pos, n, &dev->ctxlist, head) {
-			if (pos->handle == ctx->handle) {
+		list_for_each_entry_safe(pos, n, &dev->ctxlist, head)
+		{
+			if (pos->handle == ctx->handle)
+			{
 				list_del(&pos->head);
 				kfree(pos);
 				--dev->ctx_count;

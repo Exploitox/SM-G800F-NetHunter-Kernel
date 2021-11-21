@@ -19,7 +19,8 @@
 #include <linux/of_platform.h>
 #include <linux/nwpserial.h>
 
-struct of_serial_info {
+struct of_serial_info
+{
 	int type;
 	int line;
 };
@@ -28,7 +29,7 @@ struct of_serial_info {
  * Fill a struct uart_port for a given device node
  */
 static int __devinit of_platform_serial_setup(struct platform_device *ofdev,
-					int type, struct uart_port *port)
+											  int type, struct uart_port *port)
 {
 	struct resource resource;
 	struct device_node *np = ofdev->dev.of_node;
@@ -36,7 +37,8 @@ static int __devinit of_platform_serial_setup(struct platform_device *ofdev,
 	int ret;
 
 	memset(port, 0, sizeof *port);
-	if (of_property_read_u32(np, "clock-frequency", &clk)) {
+	if (of_property_read_u32(np, "clock-frequency", &clk))
+	{
 		dev_warn(&ofdev->dev, "no clock-frequency property set\n");
 		return -ENODEV;
 	}
@@ -45,7 +47,8 @@ static int __devinit of_platform_serial_setup(struct platform_device *ofdev,
 		port->custom_divisor = clk / (16 * spd);
 
 	ret = of_address_to_resource(np, 0, &resource);
-	if (ret) {
+	if (ret)
+	{
 		dev_warn(&ofdev->dev, "invalid address\n");
 		return ret;
 	}
@@ -57,14 +60,20 @@ static int __devinit of_platform_serial_setup(struct platform_device *ofdev,
 	if (of_property_read_u32(np, "reg-offset", &prop) == 0)
 		port->mapbase += prop;
 
+	/* Compatibility with the deprecated pxa driver and 8250_pxa drivers. */
+	if (of_device_is_compatible(np, "mrvl,mmp-uart"))
+		port->regshift = 2;
+
 	/* Check for registers offset within the devices address range */
 	if (of_property_read_u32(np, "reg-shift", &prop) == 0)
 		port->regshift = prop;
 
 	port->irq = irq_of_parse_and_map(np, 0);
 	port->iotype = UPIO_MEM;
-	if (of_property_read_u32(np, "reg-io-width", &prop) == 0) {
-		switch (prop) {
+	if (of_property_read_u32(np, "reg-io-width", &prop) == 0)
+	{
+		switch (prop)
+		{
 		case 1:
 			port->iotype = UPIO_MEM;
 			break;
@@ -73,15 +82,14 @@ static int __devinit of_platform_serial_setup(struct platform_device *ofdev,
 			break;
 		default:
 			dev_warn(&ofdev->dev, "unsupported reg-io-width (%d)\n",
-				 prop);
+					 prop);
 			return -EINVAL;
 		}
 	}
 
 	port->type = type;
 	port->uartclk = clk;
-	port->flags = UPF_SHARE_IRQ | UPF_BOOT_AUTOCONF | UPF_IOREMAP
-		| UPF_FIXED_PORT | UPF_FIXED_TYPE;
+	port->flags = UPF_SHARE_IRQ | UPF_BOOT_AUTOCONF | UPF_IOREMAP | UPF_FIXED_PORT | UPF_FIXED_TYPE;
 	port->dev = &ofdev->dev;
 
 	return 0;
@@ -115,7 +123,8 @@ static int __devinit of_platform_serial_probe(struct platform_device *ofdev)
 	if (ret)
 		goto out;
 
-	switch (port_type) {
+	switch (port_type)
+	{
 #ifdef CONFIG_SERIAL_8250
 	case PORT_8250 ... PORT_MAX_8250:
 		ret = serial8250_register_port(&port);
@@ -152,7 +161,8 @@ out:
 static int of_platform_serial_remove(struct platform_device *ofdev)
 {
 	struct of_serial_info *info = dev_get_drvdata(&ofdev->dev);
-	switch (info->type) {
+	switch (info->type)
+	{
 #ifdef CONFIG_SERIAL_8250
 	case PORT_8250 ... PORT_MAX_8250:
 		serial8250_unregister_port(info->line);
@@ -175,24 +185,53 @@ static int of_platform_serial_remove(struct platform_device *ofdev)
  * A few common types, add more as needed.
  */
 static struct of_device_id __devinitdata of_platform_serial_table[] = {
-	{ .compatible = "ns8250",   .data = (void *)PORT_8250, },
-	{ .compatible = "ns16450",  .data = (void *)PORT_16450, },
-	{ .compatible = "ns16550a", .data = (void *)PORT_16550A, },
-	{ .compatible = "ns16550",  .data = (void *)PORT_16550, },
-	{ .compatible = "ns16750",  .data = (void *)PORT_16750, },
-	{ .compatible = "ns16850",  .data = (void *)PORT_16850, },
-	{ .compatible = "nvidia,tegra20-uart", .data = (void *)PORT_TEGRA, },
-	{ .compatible = "altr,16550-FIFO32",
-		.data = (void *)PORT_ALTR_16550_F32, },
-	{ .compatible = "altr,16550-FIFO64",
-		.data = (void *)PORT_ALTR_16550_F64, },
-	{ .compatible = "altr,16550-FIFO128",
-		.data = (void *)PORT_ALTR_16550_F128, },
+	{
+		.compatible = "ns8250",
+		.data = (void *)PORT_8250,
+	},
+	{
+		.compatible = "ns16450",
+		.data = (void *)PORT_16450,
+	},
+	{
+		.compatible = "ns16550a",
+		.data = (void *)PORT_16550A,
+	},
+	{
+		.compatible = "ns16550",
+		.data = (void *)PORT_16550,
+	},
+	{
+		.compatible = "ns16750",
+		.data = (void *)PORT_16750,
+	},
+	{
+		.compatible = "ns16850",
+		.data = (void *)PORT_16850,
+	},
+	{
+		.compatible = "nvidia,tegra20-uart",
+		.data = (void *)PORT_TEGRA,
+	},
+	{
+		.compatible = "altr,16550-FIFO32",
+		.data = (void *)PORT_ALTR_16550_F32,
+	},
+	{
+		.compatible = "altr,16550-FIFO64",
+		.data = (void *)PORT_ALTR_16550_F64,
+	},
+	{
+		.compatible = "altr,16550-FIFO128",
+		.data = (void *)PORT_ALTR_16550_F128,
+	},
 #ifdef CONFIG_SERIAL_OF_PLATFORM_NWPSERIAL
-	{ .compatible = "ibm,qpace-nwp-serial",
-		.data = (void *)PORT_NWPSERIAL, },
+	{
+		.compatible = "ibm,qpace-nwp-serial",
+		.data = (void *)PORT_NWPSERIAL,
+	},
 #endif
-	{ /* end of list */ },
+	{/* end of list */},
 };
 
 static struct platform_driver of_platform_serial_driver = {

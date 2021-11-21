@@ -32,81 +32,82 @@ struct net_generic;
 struct sock;
 struct netns_ipvs;
 
-
-#define NETDEV_HASHBITS    8
+#define NETDEV_HASHBITS 8
 #define NETDEV_HASHENTRIES (1 << NETDEV_HASHBITS)
 
-struct net {
-	atomic_t		passive;	/* To decided when the network
+struct net
+{
+	atomic_t passive; /* To decided when the network
 						 * namespace should be freed.
 						 */
-	atomic_t		count;		/* To decided when the network
+	atomic_t count;	  /* To decided when the network
 						 *  namespace should be shut down.
 						 */
 #ifdef NETNS_REFCNT_DEBUG
-	atomic_t		use_count;	/* To track references we
+	atomic_t use_count; /* To track references we
 						 * destroy on demand
 						 */
 #endif
-	spinlock_t		rules_mod_lock;
+	spinlock_t rules_mod_lock;
 
-	struct list_head	list;		/* list of network namespaces */
-	struct list_head	cleanup_list;	/* namespaces on death row */
-	struct list_head	exit_list;	/* Use only net_mutex */
+	u32 hash_mix;
 
-	struct user_namespace   *user_ns;	/* Owning user namespace */
+	struct list_head list;		   /* list of network namespaces */
+	struct list_head cleanup_list; /* namespaces on death row */
+	struct list_head exit_list;	   /* Use only net_mutex */
 
-	unsigned int		proc_inum;
+	struct user_namespace *user_ns; /* Owning user namespace */
 
-	struct proc_dir_entry 	*proc_net;
-	struct proc_dir_entry 	*proc_net_stat;
+	unsigned int proc_inum;
+
+	struct proc_dir_entry *proc_net;
+	struct proc_dir_entry *proc_net_stat;
 
 #ifdef CONFIG_SYSCTL
-	struct ctl_table_set	sysctls;
+	struct ctl_table_set sysctls;
 #endif
 
-	struct sock 		*rtnl;			/* rtnetlink socket */
-	struct sock		*genl_sock;
+	struct sock *rtnl; /* rtnetlink socket */
+	struct sock *genl_sock;
 
-	struct list_head 	dev_base_head;
-	struct hlist_head 	*dev_name_head;
-	struct hlist_head	*dev_index_head;
-	unsigned int		dev_base_seq;	/* protected by rtnl_mutex */
+	struct list_head dev_base_head;
+	struct hlist_head *dev_name_head;
+	struct hlist_head *dev_index_head;
+	unsigned int dev_base_seq; /* protected by rtnl_mutex */
 
 	/* core fib_rules */
-	struct list_head	rules_ops;
+	struct list_head rules_ops;
 
-
-	struct net_device       *loopback_dev;          /* The loopback */
-	struct netns_core	core;
-	struct netns_mib	mib;
-	struct netns_packet	packet;
-	struct netns_unix	unx;
-	struct netns_ipv4	ipv4;
+	struct net_device *loopback_dev; /* The loopback */
+	struct netns_core core;
+	struct netns_mib mib;
+	struct netns_packet packet;
+	struct netns_unix unx;
+	struct netns_ipv4 ipv4;
 #if IS_ENABLED(CONFIG_IPV6)
-	struct netns_ipv6	ipv6;
+	struct netns_ipv6 ipv6;
 #endif
 #if defined(CONFIG_IP_DCCP) || defined(CONFIG_IP_DCCP_MODULE)
-	struct netns_dccp	dccp;
+	struct netns_dccp dccp;
 #endif
 #ifdef CONFIG_NETFILTER
-	struct netns_xt		xt;
+	struct netns_xt xt;
 #if defined(CONFIG_NF_CONNTRACK) || defined(CONFIG_NF_CONNTRACK_MODULE)
-	struct netns_ct		ct;
+	struct netns_ct ct;
 #endif
-	struct sock		*nfnl;
-	struct sock		*nfnl_stash;
+	struct sock *nfnl;
+	struct sock *nfnl_stash;
 #endif
 #ifdef CONFIG_WEXT_CORE
-	struct sk_buff_head	wext_nlevents;
+	struct sk_buff_head wext_nlevents;
 #endif
-	struct net_generic __rcu	*gen;
+	struct net_generic __rcu *gen;
 
 	/* Note : following structs are cache line aligned */
 #ifdef CONFIG_XFRM
-	struct netns_xfrm	xfrm;
+	struct netns_xfrm xfrm;
 #endif
-	struct netns_ipvs	*ipvs;
+	struct netns_ipvs *ipvs;
 };
 
 #include <linux/seq_file_net.h>
@@ -116,17 +117,16 @@ extern struct net init_net;
 
 #ifdef CONFIG_NET
 extern struct net *copy_net_ns(unsigned long flags,
-		struct user_namespace *user_ns, struct net *net_ns);
+							   struct user_namespace *user_ns, struct net *net_ns);
 
-#else /* CONFIG_NET */
+#else  /* CONFIG_NET */
 static inline struct net *copy_net_ns(unsigned long flags,
-		struct user_namespace *user_ns, struct net *net_ns)
+									  struct user_namespace *user_ns, struct net *net_ns)
 {
 	/* There is nothing to copy so this is a noop */
 	return net_ns;
 }
 #endif /* CONFIG_NET */
-
 
 extern struct list_head net_namespace_list;
 
@@ -160,8 +160,7 @@ static inline void put_net(struct net *net)
 		__put_net(net);
 }
 
-static inline
-int net_eq(const struct net *net1, const struct net *net2)
+static inline int net_eq(const struct net *net1, const struct net *net2)
 {
 	return net1 == net2;
 }
@@ -184,15 +183,13 @@ static inline struct net *maybe_get_net(struct net *net)
 	return net;
 }
 
-static inline
-int net_eq(const struct net *net1, const struct net *net2)
+static inline int net_eq(const struct net *net1, const struct net *net2)
 {
 	return 1;
 }
 
 #define net_drop_ns NULL
 #endif
-
 
 #ifdef NETNS_REFCNT_DEBUG
 static inline struct net *hold_net(struct net *net)
@@ -225,22 +222,26 @@ static inline void write_pnet(struct net **pnet, struct net *net)
 	*pnet = net;
 }
 
-static inline struct net *read_pnet(struct net * const *pnet)
+static inline struct net *read_pnet(struct net *const *pnet)
 {
 	return *pnet;
 }
 
 #else
 
-#define write_pnet(pnet, net)	do { (void)(net);} while (0)
-#define read_pnet(pnet)		(&init_net)
+#define write_pnet(pnet, net) \
+	do                        \
+	{                         \
+		(void)(net);          \
+	} while (0)
+#define read_pnet(pnet) (&init_net)
 
 #endif
 
-#define for_each_net(VAR)				\
+#define for_each_net(VAR) \
 	list_for_each_entry(VAR, &net_namespace_list, list)
 
-#define for_each_net_rcu(VAR)				\
+#define for_each_net_rcu(VAR) \
 	list_for_each_entry_rcu(VAR, &net_namespace_list, list)
 
 #ifdef CONFIG_NET_NS
@@ -248,12 +249,13 @@ static inline struct net *read_pnet(struct net * const *pnet)
 #define __net_exit
 #define __net_initdata
 #else
-#define __net_init	__init
-#define __net_exit	__exit_refok
-#define __net_initdata	__initdata
+#define __net_init __init
+#define __net_exit __exit_refok
+#define __net_initdata __initdata
 #endif
 
-struct pernet_operations {
+struct pernet_operations
+{
 	struct list_head list;
 	int (*init)(struct net *net);
 	void (*exit)(struct net *net);
@@ -291,7 +293,7 @@ struct ctl_table;
 struct ctl_table_header;
 
 extern struct ctl_table_header *register_net_sysctl_table(struct net *net,
-	const struct ctl_path *path, struct ctl_table *table);
+														  const struct ctl_path *path, struct ctl_table *table);
 extern struct ctl_table_header *register_net_sysctl_rotable(
 	const struct ctl_path *path, struct ctl_table *table);
 extern void unregister_net_sysctl_table(struct ctl_table_header *header);

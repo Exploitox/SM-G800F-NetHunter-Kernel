@@ -22,12 +22,13 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 
-struct crypto_pcbc_ctx {
+struct crypto_pcbc_ctx
+{
 	struct crypto_cipher *child;
 };
 
 static int crypto_pcbc_setkey(struct crypto_tfm *parent, const u8 *key,
-			      unsigned int keylen)
+							  unsigned int keylen)
 {
 	struct crypto_pcbc_ctx *ctx = crypto_tfm_ctx(parent);
 	struct crypto_cipher *child = ctx->child;
@@ -35,16 +36,16 @@ static int crypto_pcbc_setkey(struct crypto_tfm *parent, const u8 *key,
 
 	crypto_cipher_clear_flags(child, CRYPTO_TFM_REQ_MASK);
 	crypto_cipher_set_flags(child, crypto_tfm_get_flags(parent) &
-				CRYPTO_TFM_REQ_MASK);
+									   CRYPTO_TFM_REQ_MASK);
 	err = crypto_cipher_setkey(child, key, keylen);
 	crypto_tfm_set_flags(parent, crypto_cipher_get_flags(child) &
-			     CRYPTO_TFM_RES_MASK);
+									 CRYPTO_TFM_RES_MASK);
 	return err;
 }
 
 static int crypto_pcbc_encrypt_segment(struct blkcipher_desc *desc,
-				       struct blkcipher_walk *walk,
-				       struct crypto_cipher *tfm)
+									   struct blkcipher_walk *walk,
+									   struct crypto_cipher *tfm)
 {
 	void (*fn)(struct crypto_tfm *, u8 *, const u8 *) =
 		crypto_cipher_alg(tfm)->cia_encrypt;
@@ -52,9 +53,10 @@ static int crypto_pcbc_encrypt_segment(struct blkcipher_desc *desc,
 	unsigned int nbytes = walk->nbytes;
 	u8 *src = walk->src.virt.addr;
 	u8 *dst = walk->dst.virt.addr;
-	u8 *iv = walk->iv;
+	u8 *const iv = walk->iv;
 
-	do {
+	do
+	{
 		crypto_xor(iv, src, bsize);
 		fn(crypto_cipher_tfm(tfm), dst, iv);
 		memcpy(iv, dst, bsize);
@@ -68,18 +70,19 @@ static int crypto_pcbc_encrypt_segment(struct blkcipher_desc *desc,
 }
 
 static int crypto_pcbc_encrypt_inplace(struct blkcipher_desc *desc,
-				       struct blkcipher_walk *walk,
-				       struct crypto_cipher *tfm)
+									   struct blkcipher_walk *walk,
+									   struct crypto_cipher *tfm)
 {
 	void (*fn)(struct crypto_tfm *, u8 *, const u8 *) =
 		crypto_cipher_alg(tfm)->cia_encrypt;
 	int bsize = crypto_cipher_blocksize(tfm);
 	unsigned int nbytes = walk->nbytes;
 	u8 *src = walk->src.virt.addr;
-	u8 *iv = walk->iv;
+	u8 *const iv = walk->iv;
 	u8 tmpbuf[bsize];
 
-	do {
+	do
+	{
 		memcpy(tmpbuf, src, bsize);
 		crypto_xor(iv, src, bsize);
 		fn(crypto_cipher_tfm(tfm), src, iv);
@@ -89,14 +92,12 @@ static int crypto_pcbc_encrypt_inplace(struct blkcipher_desc *desc,
 		src += bsize;
 	} while ((nbytes -= bsize) >= bsize);
 
-	memcpy(walk->iv, iv, bsize);
-
 	return nbytes;
 }
 
 static int crypto_pcbc_encrypt(struct blkcipher_desc *desc,
-			       struct scatterlist *dst, struct scatterlist *src,
-			       unsigned int nbytes)
+							   struct scatterlist *dst, struct scatterlist *src,
+							   unsigned int nbytes)
 {
 	struct blkcipher_walk walk;
 	struct crypto_blkcipher *tfm = desc->tfm;
@@ -107,13 +108,14 @@ static int crypto_pcbc_encrypt(struct blkcipher_desc *desc,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	while ((nbytes = walk.nbytes)) {
+	while ((nbytes = walk.nbytes))
+	{
 		if (walk.src.virt.addr == walk.dst.virt.addr)
 			nbytes = crypto_pcbc_encrypt_inplace(desc, &walk,
-							     child);
+												 child);
 		else
 			nbytes = crypto_pcbc_encrypt_segment(desc, &walk,
-							     child);
+												 child);
 		err = blkcipher_walk_done(desc, &walk, nbytes);
 	}
 
@@ -121,8 +123,8 @@ static int crypto_pcbc_encrypt(struct blkcipher_desc *desc,
 }
 
 static int crypto_pcbc_decrypt_segment(struct blkcipher_desc *desc,
-				       struct blkcipher_walk *walk,
-				       struct crypto_cipher *tfm)
+									   struct blkcipher_walk *walk,
+									   struct crypto_cipher *tfm)
 {
 	void (*fn)(struct crypto_tfm *, u8 *, const u8 *) =
 		crypto_cipher_alg(tfm)->cia_decrypt;
@@ -130,9 +132,10 @@ static int crypto_pcbc_decrypt_segment(struct blkcipher_desc *desc,
 	unsigned int nbytes = walk->nbytes;
 	u8 *src = walk->src.virt.addr;
 	u8 *dst = walk->dst.virt.addr;
-	u8 *iv = walk->iv;
+	u8 *const iv = walk->iv;
 
-	do {
+	do
+	{
 		fn(crypto_cipher_tfm(tfm), dst, src);
 		crypto_xor(dst, iv, bsize);
 		memcpy(iv, src, bsize);
@@ -142,24 +145,23 @@ static int crypto_pcbc_decrypt_segment(struct blkcipher_desc *desc,
 		dst += bsize;
 	} while ((nbytes -= bsize) >= bsize);
 
-	memcpy(walk->iv, iv, bsize);
-
 	return nbytes;
 }
 
 static int crypto_pcbc_decrypt_inplace(struct blkcipher_desc *desc,
-				       struct blkcipher_walk *walk,
-				       struct crypto_cipher *tfm)
+									   struct blkcipher_walk *walk,
+									   struct crypto_cipher *tfm)
 {
 	void (*fn)(struct crypto_tfm *, u8 *, const u8 *) =
 		crypto_cipher_alg(tfm)->cia_decrypt;
 	int bsize = crypto_cipher_blocksize(tfm);
 	unsigned int nbytes = walk->nbytes;
 	u8 *src = walk->src.virt.addr;
-	u8 *iv = walk->iv;
+	u8 *const iv = walk->iv;
 	u8 tmpbuf[bsize];
 
-	do {
+	do
+	{
 		memcpy(tmpbuf, src, bsize);
 		fn(crypto_cipher_tfm(tfm), src, src);
 		crypto_xor(src, iv, bsize);
@@ -169,14 +171,12 @@ static int crypto_pcbc_decrypt_inplace(struct blkcipher_desc *desc,
 		src += bsize;
 	} while ((nbytes -= bsize) >= bsize);
 
-	memcpy(walk->iv, iv, bsize);
-
 	return nbytes;
 }
 
 static int crypto_pcbc_decrypt(struct blkcipher_desc *desc,
-			       struct scatterlist *dst, struct scatterlist *src,
-			       unsigned int nbytes)
+							   struct scatterlist *dst, struct scatterlist *src,
+							   unsigned int nbytes)
 {
 	struct blkcipher_walk walk;
 	struct crypto_blkcipher *tfm = desc->tfm;
@@ -187,13 +187,14 @@ static int crypto_pcbc_decrypt(struct blkcipher_desc *desc,
 	blkcipher_walk_init(&walk, dst, src, nbytes);
 	err = blkcipher_walk_virt(desc, &walk);
 
-	while ((nbytes = walk.nbytes)) {
+	while ((nbytes = walk.nbytes))
+	{
 		if (walk.src.virt.addr == walk.dst.virt.addr)
 			nbytes = crypto_pcbc_decrypt_inplace(desc, &walk,
-							     child);
+												 child);
 		else
 			nbytes = crypto_pcbc_decrypt_segment(desc, &walk,
-							     child);
+												 child);
 		err = blkcipher_walk_done(desc, &walk, nbytes);
 	}
 
@@ -232,7 +233,7 @@ static struct crypto_instance *crypto_pcbc_alloc(struct rtattr **tb)
 		return ERR_PTR(err);
 
 	alg = crypto_get_attr_alg(tb, CRYPTO_ALG_TYPE_CIPHER,
-				  CRYPTO_ALG_TYPE_MASK);
+							  CRYPTO_ALG_TYPE_MASK);
 	if (IS_ERR(alg))
 		return ERR_CAST(alg);
 

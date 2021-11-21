@@ -30,25 +30,26 @@
 #define WM831X_BUCKV_MAX_SELECTOR 0x68
 #define WM831X_BUCKP_MAX_SELECTOR 0x66
 
-#define WM831X_DCDC_MODE_FAST    0
-#define WM831X_DCDC_MODE_NORMAL  1
-#define WM831X_DCDC_MODE_IDLE    2
+#define WM831X_DCDC_MODE_FAST 0
+#define WM831X_DCDC_MODE_NORMAL 1
+#define WM831X_DCDC_MODE_IDLE 2
 #define WM831X_DCDC_MODE_STANDBY 3
 
 #define WM831X_DCDC_MAX_NAME 6
 
 /* Register offsets in control block */
-#define WM831X_DCDC_CONTROL_1     0
-#define WM831X_DCDC_CONTROL_2     1
-#define WM831X_DCDC_ON_CONFIG     2
+#define WM831X_DCDC_CONTROL_1 0
+#define WM831X_DCDC_CONTROL_2 1
+#define WM831X_DCDC_ON_CONFIG 2
 #define WM831X_DCDC_SLEEP_CONTROL 3
-#define WM831X_DCDC_DVS_CONTROL   4
+#define WM831X_DCDC_DVS_CONTROL 4
 
 /*
  * Shared
  */
 
-struct wm831x_dcdc {
+struct wm831x_dcdc
+{
 	char name[WM831X_DCDC_MAX_NAME];
 	struct regulator_desc desc;
 	int base;
@@ -109,7 +110,8 @@ static unsigned int wm831x_dcdc_get_mode(struct regulator_dev *rdev)
 
 	val = (val & WM831X_DC1_ON_MODE_MASK) >> WM831X_DC1_ON_MODE_SHIFT;
 
-	switch (val) {
+	switch (val)
+	{
 	case WM831X_DCDC_MODE_FAST:
 		return REGULATOR_MODE_FAST;
 	case WM831X_DCDC_MODE_NORMAL:
@@ -125,11 +127,12 @@ static unsigned int wm831x_dcdc_get_mode(struct regulator_dev *rdev)
 }
 
 static int wm831x_dcdc_set_mode_int(struct wm831x *wm831x, int reg,
-				    unsigned int mode)
+									unsigned int mode)
 {
 	int val;
 
-	switch (mode) {
+	switch (mode)
+	{
 	case REGULATOR_MODE_FAST:
 		val = WM831X_DCDC_MODE_FAST;
 		break;
@@ -147,7 +150,7 @@ static int wm831x_dcdc_set_mode_int(struct wm831x *wm831x, int reg,
 	}
 
 	return wm831x_set_bits(wm831x, reg, WM831X_DC1_ON_MODE_MASK,
-			       val << WM831X_DC1_ON_MODE_SHIFT);
+						   val << WM831X_DC1_ON_MODE_SHIFT);
 }
 
 static int wm831x_dcdc_set_mode(struct regulator_dev *rdev, unsigned int mode)
@@ -160,7 +163,7 @@ static int wm831x_dcdc_set_mode(struct regulator_dev *rdev, unsigned int mode)
 }
 
 static int wm831x_dcdc_set_suspend_mode(struct regulator_dev *rdev,
-					unsigned int mode)
+										unsigned int mode)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	struct wm831x *wm831x = dcdc->wm831x;
@@ -180,23 +183,27 @@ static int wm831x_dcdc_get_status(struct regulator_dev *rdev)
 	if (ret < 0)
 		return ret;
 
-	if (ret & (1 << rdev_get_id(rdev))) {
+	if (ret & (1 << rdev_get_id(rdev)))
+	{
 		dev_dbg(wm831x->dev, "DCDC%d under voltage\n",
-			rdev_get_id(rdev) + 1);
+				rdev_get_id(rdev) + 1);
 		return REGULATOR_STATUS_ERROR;
 	}
 
 	/* DCDC1 and DCDC2 can additionally detect high voltage/current */
-	if (rdev_get_id(rdev) < 2) {
-		if (ret & (WM831X_DC1_OV_STS << rdev_get_id(rdev))) {
+	if (rdev_get_id(rdev) < 2)
+	{
+		if (ret & (WM831X_DC1_OV_STS << rdev_get_id(rdev)))
+		{
 			dev_dbg(wm831x->dev, "DCDC%d over voltage\n",
-				rdev_get_id(rdev) + 1);
+					rdev_get_id(rdev) + 1);
 			return REGULATOR_STATUS_ERROR;
 		}
 
-		if (ret & (WM831X_DC1_HC_STS << rdev_get_id(rdev))) {
+		if (ret & (WM831X_DC1_HC_STS << rdev_get_id(rdev)))
+		{
 			dev_dbg(wm831x->dev, "DCDC%d over current\n",
-				rdev_get_id(rdev) + 1);
+					rdev_get_id(rdev) + 1);
 			return REGULATOR_STATUS_ERROR;
 		}
 	}
@@ -218,8 +225,8 @@ static irqreturn_t wm831x_dcdc_uv_irq(int irq, void *data)
 	struct wm831x_dcdc *dcdc = data;
 
 	regulator_notifier_call_chain(dcdc->regulator,
-				      REGULATOR_EVENT_UNDER_VOLTAGE,
-				      NULL);
+								  REGULATOR_EVENT_UNDER_VOLTAGE,
+								  NULL);
 
 	return IRQ_HANDLED;
 }
@@ -229,8 +236,8 @@ static irqreturn_t wm831x_dcdc_oc_irq(int irq, void *data)
 	struct wm831x_dcdc *dcdc = data;
 
 	regulator_notifier_call_chain(dcdc->regulator,
-				      REGULATOR_EVENT_OVER_CURRENT,
-				      NULL);
+								  REGULATOR_EVENT_OVER_CURRENT,
+								  NULL);
 
 	return IRQ_HANDLED;
 }
@@ -240,7 +247,7 @@ static irqreturn_t wm831x_dcdc_oc_irq(int irq, void *data)
  */
 
 static int wm831x_buckv_list_voltage(struct regulator_dev *rdev,
-				      unsigned selector)
+									 unsigned selector)
 {
 	if (selector <= 0x8)
 		return 600000;
@@ -250,7 +257,7 @@ static int wm831x_buckv_list_voltage(struct regulator_dev *rdev,
 }
 
 static int wm831x_buckv_select_min_voltage(struct regulator_dev *rdev,
-					   int min_uV, int max_uV)
+										   int min_uV, int max_uV)
 {
 	u16 vsel;
 
@@ -286,7 +293,7 @@ static int wm831x_buckv_set_dvs(struct regulator_dev *rdev, int state)
 }
 
 static int wm831x_buckv_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV, unsigned *selector)
+									int min_uV, int max_uV, unsigned *selector)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	struct wm831x *wm831x = dcdc->wm831x;
@@ -327,22 +334,23 @@ static int wm831x_buckv_set_voltage(struct regulator_dev *rdev,
 	 * usage where we want to get to the highest voltage very
 	 * quickly.
 	 */
-	if (vsel > dcdc->dvs_vsel) {
+	if (vsel > dcdc->dvs_vsel)
+	{
 		ret = wm831x_set_bits(wm831x, dvs_reg,
-				      WM831X_DC1_DVS_VSEL_MASK,
-				      vsel);
+							  WM831X_DC1_DVS_VSEL_MASK,
+							  vsel);
 		if (ret == 0)
 			dcdc->dvs_vsel = vsel;
 		else
 			dev_warn(wm831x->dev,
-				 "Failed to set DCDC DVS VSEL: %d\n", ret);
+					 "Failed to set DCDC DVS VSEL: %d\n", ret);
 	}
 
 	return 0;
 }
 
 static int wm831x_buckv_set_suspend_voltage(struct regulator_dev *rdev,
-					    int uV)
+											int uV)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	struct wm831x *wm831x = dcdc->wm831x;
@@ -367,28 +375,28 @@ static int wm831x_buckv_get_voltage_sel(struct regulator_dev *rdev)
 }
 
 /* Current limit options */
-static u16 wm831x_dcdc_ilim[] = {
-	125, 250, 375, 500, 625, 750, 875, 1000
-};
+static const unsigned int wm831x_dcdc_ilim[] = {
+	125000, 250000, 375000, 500000, 625000, 750000, 875000, 1000000};
 
 static int wm831x_buckv_set_current_limit(struct regulator_dev *rdev,
-					   int min_uA, int max_uA)
+										  int min_uA, int max_uA)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	struct wm831x *wm831x = dcdc->wm831x;
 	u16 reg = dcdc->base + WM831X_DCDC_CONTROL_2;
 	int i;
 
-	for (i = 0; i < ARRAY_SIZE(wm831x_dcdc_ilim); i++) {
+	for (i = 0; i < ARRAY_SIZE(wm831x_dcdc_ilim); i++)
+	{
 		if ((min_uA <= wm831x_dcdc_ilim[i]) &&
-		    (wm831x_dcdc_ilim[i] <= max_uA))
+			(wm831x_dcdc_ilim[i] <= max_uA))
 			break;
 	}
 	if (i == ARRAY_SIZE(wm831x_dcdc_ilim))
 		return -EINVAL;
 
 	return wm831x_set_bits(wm831x, reg, WM831X_DC1_HC_THR_MASK,
-			       i << WM831X_DC1_HC_THR_SHIFT);
+						   i << WM831X_DC1_HC_THR_SHIFT);
 }
 
 static int wm831x_buckv_get_current_limit(struct regulator_dev *rdev)
@@ -428,7 +436,7 @@ static struct regulator_ops wm831x_buckv_ops = {
  * (with reduced performance) if we fail.
  */
 static __devinit void wm831x_buckv_dvs_init(struct wm831x_dcdc *dcdc,
-					    struct wm831x_buckv_pdata *pdata)
+											struct wm831x_buckv_pdata *pdata)
 {
 	struct wm831x *wm831x = dcdc->wm831x;
 	int ret;
@@ -438,9 +446,10 @@ static __devinit void wm831x_buckv_dvs_init(struct wm831x_dcdc *dcdc,
 		return;
 
 	ret = gpio_request(pdata->dvs_gpio, "DCDC DVS");
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		dev_err(wm831x->dev, "Failed to get %s DVS GPIO: %d\n",
-			dcdc->name, ret);
+				dcdc->name, ret);
 		return;
 	}
 
@@ -450,16 +459,18 @@ static __devinit void wm831x_buckv_dvs_init(struct wm831x_dcdc *dcdc,
 	dcdc->dvs_gpio_state = pdata->dvs_init_state;
 
 	ret = gpio_direction_output(pdata->dvs_gpio, dcdc->dvs_gpio_state);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		dev_err(wm831x->dev, "Failed to enable %s DVS GPIO: %d\n",
-			dcdc->name, ret);
+				dcdc->name, ret);
 		gpio_free(pdata->dvs_gpio);
 		return;
 	}
 
 	dcdc->dvs_gpio = pdata->dvs_gpio;
 
-	switch (pdata->dvs_control_src) {
+	switch (pdata->dvs_control_src)
+	{
 	case 1:
 		ctrl = 2 << WM831X_DC1_DVS_SRC_SHIFT;
 		break;
@@ -468,29 +479,31 @@ static __devinit void wm831x_buckv_dvs_init(struct wm831x_dcdc *dcdc,
 		break;
 	default:
 		dev_err(wm831x->dev, "Invalid DVS control source %d for %s\n",
-			pdata->dvs_control_src, dcdc->name);
+				pdata->dvs_control_src, dcdc->name);
 		return;
 	}
 
 	/* If DVS_VSEL is set to the minimum value then raise it to ON_VSEL
 	 * to make bootstrapping a bit smoother.
 	 */
-	if (!dcdc->dvs_vsel) {
+	if (!dcdc->dvs_vsel)
+	{
 		ret = wm831x_set_bits(wm831x,
-				      dcdc->base + WM831X_DCDC_DVS_CONTROL,
-				      WM831X_DC1_DVS_VSEL_MASK, dcdc->on_vsel);
+							  dcdc->base + WM831X_DCDC_DVS_CONTROL,
+							  WM831X_DC1_DVS_VSEL_MASK, dcdc->on_vsel);
 		if (ret == 0)
 			dcdc->dvs_vsel = dcdc->on_vsel;
 		else
 			dev_warn(wm831x->dev, "Failed to set DVS_VSEL: %d\n",
-				 ret);
+					 ret);
 	}
 
 	ret = wm831x_set_bits(wm831x, dcdc->base + WM831X_DCDC_DVS_CONTROL,
-			      WM831X_DC1_DVS_SRC_MASK, ctrl);
-	if (ret < 0) {
+						  WM831X_DC1_DVS_SRC_MASK, ctrl);
+	if (ret < 0)
+	{
 		dev_err(wm831x->dev, "Failed to set %s DVS source: %d\n",
-			dcdc->name, ret);
+				dcdc->name, ret);
 	}
 }
 
@@ -514,9 +527,10 @@ static __devinit int wm831x_buckv_probe(struct platform_device *pdev)
 	if (pdata == NULL || pdata->dcdc[id] == NULL)
 		return -ENODEV;
 
-	dcdc = devm_kzalloc(&pdev->dev,  sizeof(struct wm831x_dcdc),
-			    GFP_KERNEL);
-	if (dcdc == NULL) {
+	dcdc = devm_kzalloc(&pdev->dev, sizeof(struct wm831x_dcdc),
+						GFP_KERNEL);
+	if (dcdc == NULL)
+	{
 		dev_err(&pdev->dev, "Unable to allocate private data\n");
 		return -ENOMEM;
 	}
@@ -524,7 +538,8 @@ static __devinit int wm831x_buckv_probe(struct platform_device *pdev)
 	dcdc->wm831x = wm831x;
 
 	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
-	if (res == NULL) {
+	if (res == NULL)
+	{
 		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
@@ -540,14 +555,16 @@ static __devinit int wm831x_buckv_probe(struct platform_device *pdev)
 	dcdc->desc.owner = THIS_MODULE;
 
 	ret = wm831x_reg_read(wm831x, dcdc->base + WM831X_DCDC_ON_CONFIG);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		dev_err(wm831x->dev, "Failed to read ON VSEL: %d\n", ret);
 		goto err;
 	}
 	dcdc->on_vsel = ret & WM831X_DC1_ON_VSEL_MASK;
 
 	ret = wm831x_reg_read(wm831x, dcdc->base + WM831X_DCDC_DVS_CONTROL);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		dev_err(wm831x->dev, "Failed to read DVS VSEL: %d\n", ret);
 		goto err;
 	}
@@ -557,29 +574,32 @@ static __devinit int wm831x_buckv_probe(struct platform_device *pdev)
 		wm831x_buckv_dvs_init(dcdc, pdata->dcdc[id]->driver_data);
 
 	dcdc->regulator = regulator_register(&dcdc->desc, &pdev->dev,
-					     pdata->dcdc[id], dcdc, NULL);
-	if (IS_ERR(dcdc->regulator)) {
+										 pdata->dcdc[id], dcdc, NULL);
+	if (IS_ERR(dcdc->regulator))
+	{
 		ret = PTR_ERR(dcdc->regulator);
 		dev_err(wm831x->dev, "Failed to register DCDC%d: %d\n",
-			id + 1, ret);
+				id + 1, ret);
 		goto err;
 	}
 
 	irq = platform_get_irq_byname(pdev, "UV");
 	ret = request_threaded_irq(irq, NULL, wm831x_dcdc_uv_irq,
-				   IRQF_TRIGGER_RISING, dcdc->name, dcdc);
-	if (ret != 0) {
+							   IRQF_TRIGGER_RISING, dcdc->name, dcdc);
+	if (ret != 0)
+	{
 		dev_err(&pdev->dev, "Failed to request UV IRQ %d: %d\n",
-			irq, ret);
+				irq, ret);
 		goto err_regulator;
 	}
 
 	irq = platform_get_irq_byname(pdev, "HC");
 	ret = request_threaded_irq(irq, NULL, wm831x_dcdc_oc_irq,
-				   IRQF_TRIGGER_RISING, dcdc->name, dcdc);
-	if (ret != 0) {
+							   IRQF_TRIGGER_RISING, dcdc->name, dcdc);
+	if (ret != 0)
+	{
 		dev_err(&pdev->dev, "Failed to request HC IRQ %d: %d\n",
-			irq, ret);
+				irq, ret);
 		goto err_uv;
 	}
 
@@ -615,9 +635,9 @@ static __devexit int wm831x_buckv_remove(struct platform_device *pdev)
 static struct platform_driver wm831x_buckv_driver = {
 	.probe = wm831x_buckv_probe,
 	.remove = __devexit_p(wm831x_buckv_remove),
-	.driver		= {
-		.name	= "wm831x-buckv",
-		.owner	= THIS_MODULE,
+	.driver = {
+		.name = "wm831x-buckv",
+		.owner = THIS_MODULE,
 	},
 };
 
@@ -626,7 +646,7 @@ static struct platform_driver wm831x_buckv_driver = {
  */
 
 static int wm831x_buckp_list_voltage(struct regulator_dev *rdev,
-				      unsigned selector)
+									 unsigned selector)
 {
 	if (selector <= WM831X_BUCKP_MAX_SELECTOR)
 		return 850000 + (selector * 25000);
@@ -635,7 +655,7 @@ static int wm831x_buckp_list_voltage(struct regulator_dev *rdev,
 }
 
 static int wm831x_buckp_set_voltage_int(struct regulator_dev *rdev, int reg,
-					int min_uV, int max_uV, int *selector)
+										int min_uV, int max_uV, int *selector)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	struct wm831x *wm831x = dcdc->wm831x;
@@ -655,18 +675,18 @@ static int wm831x_buckp_set_voltage_int(struct regulator_dev *rdev, int reg,
 }
 
 static int wm831x_buckp_set_voltage(struct regulator_dev *rdev,
-				    int min_uV, int max_uV,
-				    unsigned *selector)
+									int min_uV, int max_uV,
+									unsigned *selector)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	u16 reg = dcdc->base + WM831X_DCDC_ON_CONFIG;
 
 	return wm831x_buckp_set_voltage_int(rdev, reg, min_uV, max_uV,
-					    selector);
+										selector);
 }
 
 static int wm831x_buckp_set_suspend_voltage(struct regulator_dev *rdev,
-					    int uV)
+											int uV)
 {
 	struct wm831x_dcdc *dcdc = rdev_get_drvdata(rdev);
 	u16 reg = dcdc->base + WM831X_DCDC_SLEEP_CONTROL;
@@ -725,8 +745,9 @@ static __devinit int wm831x_buckp_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	dcdc = devm_kzalloc(&pdev->dev, sizeof(struct wm831x_dcdc),
-			    GFP_KERNEL);
-	if (dcdc == NULL) {
+						GFP_KERNEL);
+	if (dcdc == NULL)
+	{
 		dev_err(&pdev->dev, "Unable to allocate private data\n");
 		return -ENOMEM;
 	}
@@ -734,7 +755,8 @@ static __devinit int wm831x_buckp_probe(struct platform_device *pdev)
 	dcdc->wm831x = wm831x;
 
 	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
-	if (res == NULL) {
+	if (res == NULL)
+	{
 		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
@@ -750,20 +772,22 @@ static __devinit int wm831x_buckp_probe(struct platform_device *pdev)
 	dcdc->desc.owner = THIS_MODULE;
 
 	dcdc->regulator = regulator_register(&dcdc->desc, &pdev->dev,
-					     pdata->dcdc[id], dcdc, NULL);
-	if (IS_ERR(dcdc->regulator)) {
+										 pdata->dcdc[id], dcdc, NULL);
+	if (IS_ERR(dcdc->regulator))
+	{
 		ret = PTR_ERR(dcdc->regulator);
 		dev_err(wm831x->dev, "Failed to register DCDC%d: %d\n",
-			id + 1, ret);
+				id + 1, ret);
 		goto err;
 	}
 
 	irq = platform_get_irq_byname(pdev, "UV");
 	ret = request_threaded_irq(irq, NULL, wm831x_dcdc_uv_irq,
-				   IRQF_TRIGGER_RISING,	dcdc->name, dcdc);
-	if (ret != 0) {
+							   IRQF_TRIGGER_RISING, dcdc->name, dcdc);
+	if (ret != 0)
+	{
 		dev_err(&pdev->dev, "Failed to request UV IRQ %d: %d\n",
-			irq, ret);
+				irq, ret);
 		goto err_regulator;
 	}
 
@@ -792,9 +816,9 @@ static __devexit int wm831x_buckp_remove(struct platform_device *pdev)
 static struct platform_driver wm831x_buckp_driver = {
 	.probe = wm831x_buckp_probe,
 	.remove = __devexit_p(wm831x_buckp_remove),
-	.driver		= {
-		.name	= "wm831x-buckp",
-		.owner	= THIS_MODULE,
+	.driver = {
+		.name = "wm831x-buckp",
+		.owner = THIS_MODULE,
 	},
 };
 
@@ -813,9 +837,10 @@ static int wm831x_boostp_get_status(struct regulator_dev *rdev)
 	if (ret < 0)
 		return ret;
 
-	if (ret & (1 << rdev_get_id(rdev))) {
+	if (ret & (1 << rdev_get_id(rdev)))
+	{
 		dev_dbg(wm831x->dev, "DCDC%d under voltage\n",
-			rdev_get_id(rdev) + 1);
+				rdev_get_id(rdev) + 1);
 		return REGULATOR_STATUS_ERROR;
 	}
 
@@ -852,7 +877,8 @@ static __devinit int wm831x_boostp_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	dcdc = kzalloc(sizeof(struct wm831x_dcdc), GFP_KERNEL);
-	if (dcdc == NULL) {
+	if (dcdc == NULL)
+	{
 		dev_err(&pdev->dev, "Unable to allocate private data\n");
 		return -ENOMEM;
 	}
@@ -860,7 +886,8 @@ static __devinit int wm831x_boostp_probe(struct platform_device *pdev)
 	dcdc->wm831x = wm831x;
 
 	res = platform_get_resource(pdev, IORESOURCE_IO, 0);
-	if (res == NULL) {
+	if (res == NULL)
+	{
 		dev_err(&pdev->dev, "No I/O resource\n");
 		ret = -EINVAL;
 		goto err;
@@ -875,21 +902,23 @@ static __devinit int wm831x_boostp_probe(struct platform_device *pdev)
 	dcdc->desc.owner = THIS_MODULE;
 
 	dcdc->regulator = regulator_register(&dcdc->desc, &pdev->dev,
-					     pdata->dcdc[id], dcdc, NULL);
-	if (IS_ERR(dcdc->regulator)) {
+										 pdata->dcdc[id], dcdc, NULL);
+	if (IS_ERR(dcdc->regulator))
+	{
 		ret = PTR_ERR(dcdc->regulator);
 		dev_err(wm831x->dev, "Failed to register DCDC%d: %d\n",
-			id + 1, ret);
+				id + 1, ret);
 		goto err;
 	}
 
 	irq = platform_get_irq_byname(pdev, "UV");
 	ret = request_threaded_irq(irq, NULL, wm831x_dcdc_uv_irq,
-				   IRQF_TRIGGER_RISING, dcdc->name,
-				   dcdc);
-	if (ret != 0) {
+							   IRQF_TRIGGER_RISING, dcdc->name,
+							   dcdc);
+	if (ret != 0)
+	{
 		dev_err(&pdev->dev, "Failed to request UV IRQ %d: %d\n",
-			irq, ret);
+				irq, ret);
 		goto err_regulator;
 	}
 
@@ -920,9 +949,9 @@ static __devexit int wm831x_boostp_remove(struct platform_device *pdev)
 static struct platform_driver wm831x_boostp_driver = {
 	.probe = wm831x_boostp_probe,
 	.remove = __devexit_p(wm831x_boostp_remove),
-	.driver		= {
-		.name	= "wm831x-boostp",
-		.owner	= THIS_MODULE,
+	.driver = {
+		.name = "wm831x-boostp",
+		.owner = THIS_MODULE,
 	},
 };
 
@@ -956,7 +985,8 @@ static __devinit int wm831x_epe_probe(struct platform_device *pdev)
 		return -ENODEV;
 
 	dcdc = kzalloc(sizeof(struct wm831x_dcdc), GFP_KERNEL);
-	if (dcdc == NULL) {
+	if (dcdc == NULL)
+	{
 		dev_err(&pdev->dev, "Unable to allocate private data\n");
 		return -ENOMEM;
 	}
@@ -974,11 +1004,12 @@ static __devinit int wm831x_epe_probe(struct platform_device *pdev)
 	dcdc->desc.owner = THIS_MODULE;
 
 	dcdc->regulator = regulator_register(&dcdc->desc, &pdev->dev,
-					     pdata->epe[id], dcdc, NULL);
-	if (IS_ERR(dcdc->regulator)) {
+										 pdata->epe[id], dcdc, NULL);
+	if (IS_ERR(dcdc->regulator))
+	{
 		ret = PTR_ERR(dcdc->regulator);
 		dev_err(wm831x->dev, "Failed to register EPE%d: %d\n",
-			id + 1, ret);
+				id + 1, ret);
 		goto err;
 	}
 
@@ -1006,9 +1037,9 @@ static __devexit int wm831x_epe_remove(struct platform_device *pdev)
 static struct platform_driver wm831x_epe_driver = {
 	.probe = wm831x_epe_probe,
 	.remove = __devexit_p(wm831x_epe_remove),
-	.driver		= {
-		.name	= "wm831x-epe",
-		.owner	= THIS_MODULE,
+	.driver = {
+		.name = "wm831x-epe",
+		.owner = THIS_MODULE,
 	},
 };
 

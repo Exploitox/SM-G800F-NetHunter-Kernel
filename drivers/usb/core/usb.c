@@ -26,7 +26,7 @@
 #include <linux/string.h>
 #include <linux/bitops.h>
 #include <linux/slab.h>
-#include <linux/interrupt.h>  /* for in_interrupt() */
+#include <linux/interrupt.h> /* for in_interrupt() */
 #include <linux/kmod.h>
 #include <linux/init.h>
 #include <linux/spinlock.h>
@@ -47,21 +47,19 @@
 
 #include "usb.h"
 
-
 const char *usbcore_name = "usbcore";
 
-static bool nousb;	/* Disable USB when built into kernel image */
+static bool nousb; /* Disable USB when built into kernel image */
 
-#ifdef	CONFIG_USB_SUSPEND
-static int usb_autosuspend_delay = 2;		/* Default delay value,
+#ifdef CONFIG_USB_SUSPEND
+static int usb_autosuspend_delay = 2; /* Default delay value,
 						 * in seconds */
 module_param_named(autosuspend, usb_autosuspend_delay, int, 0644);
 MODULE_PARM_DESC(autosuspend, "default autosuspend delay");
 
 #else
-#define usb_autosuspend_delay		0
+#define usb_autosuspend_delay 0
 #endif
-
 
 /**
  * usb_find_alt_setting() - Given a configuration, find the alternate setting
@@ -73,16 +71,17 @@ MODULE_PARM_DESC(autosuspend, "default autosuspend delay");
  * Search the configuration's interface cache for the given alt setting.
  */
 struct usb_host_interface *usb_find_alt_setting(
-		struct usb_host_config *config,
-		unsigned int iface_num,
-		unsigned int alt_num)
+	struct usb_host_config *config,
+	unsigned int iface_num,
+	unsigned int alt_num)
 {
 	struct usb_interface_cache *intf_cache = NULL;
 	int i;
 
-	for (i = 0; i < config->desc.bNumInterfaces; i++) {
-		if (config->intf_cache[i]->altsetting[0].desc.bInterfaceNumber
-				== iface_num) {
+	for (i = 0; i < config->desc.bNumInterfaces; i++)
+	{
+		if (config->intf_cache[i]->altsetting[0].desc.bInterfaceNumber == iface_num)
+		{
 			intf_cache = config->intf_cache[i];
 			break;
 		}
@@ -94,8 +93,9 @@ struct usb_host_interface *usb_find_alt_setting(
 			return &intf_cache->altsetting[i];
 
 	printk(KERN_DEBUG "Did not find alt setting %u for intf %u, "
-			"config %u\n", alt_num, iface_num,
-			config->desc.bConfigurationValue);
+					  "config %u\n",
+		   alt_num, iface_num,
+		   config->desc.bConfigurationValue);
 	return NULL;
 }
 EXPORT_SYMBOL_GPL(usb_find_alt_setting);
@@ -120,7 +120,7 @@ EXPORT_SYMBOL_GPL(usb_find_alt_setting);
  * on this device or you have locked the device!
  */
 struct usb_interface *usb_ifnum_to_if(const struct usb_device *dev,
-				      unsigned ifnum)
+									  unsigned ifnum)
 {
 	struct usb_host_config *config = dev->actconfig;
 	int i;
@@ -128,8 +128,7 @@ struct usb_interface *usb_ifnum_to_if(const struct usb_device *dev,
 	if (!config)
 		return NULL;
 	for (i = 0; i < config->desc.bNumInterfaces; i++)
-		if (config->interface[i]->altsetting[0]
-				.desc.bInterfaceNumber == ifnum)
+		if (config->interface[i]->altsetting[0].desc.bInterfaceNumber == ifnum)
 			return config->interface[i];
 
 	return NULL;
@@ -154,12 +153,13 @@ EXPORT_SYMBOL_GPL(usb_ifnum_to_if);
  * or you have locked the device!
  */
 struct usb_host_interface *usb_altnum_to_altsetting(
-					const struct usb_interface *intf,
-					unsigned int altnum)
+	const struct usb_interface *intf,
+	unsigned int altnum)
 {
 	int i;
 
-	for (i = 0; i < intf->num_altsetting; i++) {
+	for (i = 0; i < intf->num_altsetting; i++)
+	{
 		if (intf->altsetting[i].desc.bAlternateSetting == altnum)
 			return &intf->altsetting[i];
 	}
@@ -167,7 +167,8 @@ struct usb_host_interface *usb_altnum_to_altsetting(
 }
 EXPORT_SYMBOL_GPL(usb_altnum_to_altsetting);
 
-struct find_interface_arg {
+struct find_interface_arg
+{
 	int minor;
 	struct device_driver *drv;
 };
@@ -236,7 +237,7 @@ static void usb_release_dev(struct device *dev)
 	kfree(udev);
 }
 
-#ifdef	CONFIG_HOTPLUG
+#ifdef CONFIG_HOTPLUG
 static int usb_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	struct usb_device *usb_dev;
@@ -258,9 +259,9 @@ static int usb_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 {
 	return -ENODEV;
 }
-#endif	/* CONFIG_HOTPLUG */
+#endif /* CONFIG_HOTPLUG */
 
-#ifdef	CONFIG_PM
+#ifdef CONFIG_PM
 
 /* USB device Power-Management thunks.
  * There's no need to distinguish here between quiescing a USB device
@@ -271,7 +272,7 @@ static int usb_dev_uevent(struct device *dev, struct kobj_uevent_env *env)
 
 static int usb_dev_prepare(struct device *dev)
 {
-	return 0;		/* Implement eventually? */
+	return 0; /* Implement eventually? */
 }
 
 static void usb_dev_complete(struct device *dev)
@@ -322,23 +323,22 @@ static int usb_dev_restore(struct device *dev)
 }
 
 static const struct dev_pm_ops usb_device_pm_ops = {
-	.prepare =	usb_dev_prepare,
-	.complete =	usb_dev_complete,
-	.suspend =	usb_dev_suspend,
-	.resume =	usb_dev_resume,
-	.freeze =	usb_dev_freeze,
-	.thaw =		usb_dev_thaw,
-	.poweroff =	usb_dev_poweroff,
-	.restore =	usb_dev_restore,
+	.prepare = usb_dev_prepare,
+	.complete = usb_dev_complete,
+	.suspend = usb_dev_suspend,
+	.resume = usb_dev_resume,
+	.freeze = usb_dev_freeze,
+	.thaw = usb_dev_thaw,
+	.poweroff = usb_dev_poweroff,
+	.restore = usb_dev_restore,
 #ifdef CONFIG_USB_SUSPEND
-	.runtime_suspend =	usb_runtime_suspend,
-	.runtime_resume =	usb_runtime_resume,
-	.runtime_idle =		usb_runtime_idle,
+	.runtime_suspend = usb_runtime_suspend,
+	.runtime_resume = usb_runtime_resume,
+	.runtime_idle = usb_runtime_idle,
 #endif
 };
 
-#endif	/* CONFIG_PM */
-
+#endif /* CONFIG_PM */
 
 static char *usb_devnode(struct device *dev, umode_t *mode)
 {
@@ -346,19 +346,18 @@ static char *usb_devnode(struct device *dev, umode_t *mode)
 
 	usb_dev = to_usb_device(dev);
 	return kasprintf(GFP_KERNEL, "bus/usb/%03d/%03d",
-			 usb_dev->bus->busnum, usb_dev->devnum);
+					 usb_dev->bus->busnum, usb_dev->devnum);
 }
 
 struct device_type usb_device_type = {
-	.name =		"usb_device",
-	.release =	usb_release_dev,
-	.uevent =	usb_dev_uevent,
-	.devnode = 	usb_devnode,
+	.name = "usb_device",
+	.release = usb_release_dev,
+	.uevent = usb_dev_uevent,
+	.devnode = usb_devnode,
 #ifdef CONFIG_PM
-	.pm =		&usb_device_pm_ops,
+	.pm = &usb_device_pm_ops,
 #endif
 };
-
 
 /* Returns 1 if @usb_bus is WUSB, 0 otherwise */
 static unsigned usb_bus_is_wusb(struct usb_bus *bus)
@@ -366,7 +365,6 @@ static unsigned usb_bus_is_wusb(struct usb_bus *bus)
 	struct usb_hcd *hcd = container_of(bus, struct usb_hcd, self);
 	return hcd->wireless;
 }
-
 
 /**
  * usb_alloc_dev - usb device constructor (usbcore-internal)
@@ -381,7 +379,7 @@ static unsigned usb_bus_is_wusb(struct usb_bus *bus)
  * This call may not be used in a non-sleeping context.
  */
 struct usb_device *usb_alloc_dev(struct usb_device *parent,
-				 struct usb_bus *bus, unsigned port1)
+								 struct usb_bus *bus, unsigned port1)
 {
 	struct usb_device *dev;
 	struct usb_hcd *usb_hcd = container_of(bus, struct usb_hcd, self);
@@ -391,13 +389,15 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	if (!dev)
 		return NULL;
 
-	if (!usb_get_hcd(bus_to_hcd(bus))) {
+	if (!usb_get_hcd(bus_to_hcd(bus)))
+	{
 		kfree(dev);
 		return NULL;
 	}
 	/* Root hubs aren't true devices, so don't allocate HCD resources */
 	if (usb_hcd->driver->alloc_dev && parent &&
-		!usb_hcd->driver->alloc_dev(usb_hcd, dev)) {
+		!usb_hcd->driver->alloc_dev(usb_hcd, dev))
+	{
 		usb_put_hcd(bus_to_hcd(bus));
 		kfree(dev);
 		return NULL;
@@ -427,30 +427,36 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	 * as stable:  bus->busnum changes easily from modprobe order,
 	 * cardbus or pci hotplugging, and so on.
 	 */
-	if (unlikely(!parent)) {
+	if (unlikely(!parent))
+	{
 		dev->devpath[0] = '0';
 		dev->route = 0;
 
 		dev->dev.parent = bus->controller;
 		dev_set_name(&dev->dev, "usb%d", bus->busnum);
 		root_hub = 1;
-	} else {
+	}
+	else
+	{
 		/* match any labeling on the hubs; it's one-based */
-		if (parent->devpath[0] == '0') {
+		if (parent->devpath[0] == '0')
+		{
 			snprintf(dev->devpath, sizeof dev->devpath,
-				"%d", port1);
+					 "%d", port1);
 			/* Root ports are not counted in route string */
 			dev->route = 0;
-		} else {
+		}
+		else
+		{
 			snprintf(dev->devpath, sizeof dev->devpath,
-				"%s.%d", parent->devpath, port1);
+					 "%s.%d", parent->devpath, port1);
 			/* Route string assumes hubs have less than 16 ports */
 			if (port1 < 15)
 				dev->route = parent->route +
-					(port1 << ((parent->level - 1)*4));
+							 (port1 << ((parent->level - 1) * 4));
 			else
 				dev->route = parent->route +
-					(15 << ((parent->level - 1)*4));
+							 (15 << ((parent->level - 1) * 4));
 		}
 
 		dev->dev.parent = &parent->dev;
@@ -464,17 +470,18 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	dev->parent = parent;
 	INIT_LIST_HEAD(&dev->filelist);
 
-#ifdef	CONFIG_PM
+#ifdef CONFIG_PM
 	pm_runtime_set_autosuspend_delay(&dev->dev,
-			usb_autosuspend_delay * 1000);
+									 usb_autosuspend_delay * 1000);
 	dev->connect_time = jiffies;
 	dev->active_duration = -jiffies;
 #endif
-	if (root_hub)	/* Root hub always ok [and always wired] */
+	if (root_hub) /* Root hub always ok [and always wired] */
 		dev->authorized = 1;
-	else {
+	else
+	{
 		dev->authorized = usb_hcd->authorized_default;
-		dev->wusb = usb_bus_is_wusb(bus)? 1 : 0;
+		dev->wusb = usb_bus_is_wusb(bus) ? 1 : 0;
 	}
 	return dev;
 }
@@ -580,7 +587,7 @@ EXPORT_SYMBOL_GPL(usb_put_intf);
  * Returns a negative error code for failure, otherwise 0.
  */
 int usb_lock_device_for_reset(struct usb_device *udev,
-			      const struct usb_interface *iface)
+							  const struct usb_interface *iface)
 {
 	unsigned long jiffies_expire = jiffies + HZ;
 
@@ -589,10 +596,11 @@ int usb_lock_device_for_reset(struct usb_device *udev,
 	if (udev->state == USB_STATE_SUSPENDED)
 		return -EHOSTUNREACH;
 	if (iface && (iface->condition == USB_INTERFACE_UNBINDING ||
-			iface->condition == USB_INTERFACE_UNBOUND))
+				  iface->condition == USB_INTERFACE_UNBOUND))
 		return -EINTR;
 
-	while (!usb_trylock_device(udev)) {
+	while (!usb_trylock_device(udev))
+	{
 
 		/* If we can't acquire the lock after waiting one second,
 		 * we're probably deadlocked */
@@ -605,7 +613,7 @@ int usb_lock_device_for_reset(struct usb_device *udev,
 		if (udev->state == USB_STATE_SUSPENDED)
 			return -EHOSTUNREACH;
 		if (iface && (iface->condition == USB_INTERFACE_UNBINDING ||
-				iface->condition == USB_INTERFACE_UNBOUND))
+					  iface->condition == USB_INTERFACE_UNBOUND))
 			return -EINTR;
 	}
 	return 0;
@@ -638,23 +646,26 @@ EXPORT_SYMBOL_GPL(usb_get_current_frame_number);
  */
 
 int __usb_get_extra_descriptor(char *buffer, unsigned size,
-			       unsigned char type, void **ptr)
+							   unsigned char type, void **ptr, size_t minsize)
 {
 	struct usb_descriptor_header *header;
 
-	while (size >= sizeof(struct usb_descriptor_header)) {
+	while (size >= sizeof(struct usb_descriptor_header))
+	{
 		header = (struct usb_descriptor_header *)buffer;
 
-		if (header->bLength < 2) {
+		if (header->bLength < 2 || header->bLength > size)
+		{
 			printk(KERN_ERR
-				"%s: bogus descriptor, type %d length %d\n",
-				usbcore_name,
-				header->bDescriptorType,
-				header->bLength);
+				   "%s: bogus descriptor, type %d length %d\n",
+				   usbcore_name,
+				   header->bDescriptorType,
+				   header->bLength);
 			return -1;
 		}
 
-		if (header->bDescriptorType == type) {
+		if (header->bDescriptorType == type && header->bLength >= minsize)
+		{
 			*ptr = header;
 			return 0;
 		}
@@ -689,7 +700,7 @@ EXPORT_SYMBOL_GPL(__usb_get_extra_descriptor);
  * When the buffer is no longer used, free it with usb_free_coherent().
  */
 void *usb_alloc_coherent(struct usb_device *dev, size_t size, gfp_t mem_flags,
-			 dma_addr_t *dma)
+						 dma_addr_t *dma)
 {
 	if (!dev || !dev->bus)
 		return NULL;
@@ -709,7 +720,7 @@ EXPORT_SYMBOL_GPL(usb_alloc_coherent);
  * those provided in that allocation request.
  */
 void usb_free_coherent(struct usb_device *dev, size_t size, void *addr,
-		       dma_addr_t dma)
+					   dma_addr_t dma)
 {
 	if (!dev || !dev->bus)
 		return;
@@ -760,7 +771,7 @@ struct urb *usb_buffer_map(struct urb *urb)
 	return urb;
 }
 EXPORT_SYMBOL_GPL(usb_buffer_map);
-#endif  /*  0  */
+#endif /*  0  */
 
 /* XXX DISABLED, no users currently.  If you wish to re-enable this
  * XXX please determine whether the sync is to transfer ownership of
@@ -828,7 +839,7 @@ void usb_buffer_unmap(struct urb *urb)
 	urb->transfer_flags &= ~URB_NO_TRANSFER_DMA_MAP;
 }
 EXPORT_SYMBOL_GPL(usb_buffer_unmap);
-#endif  /*  0  */
+#endif /*  0  */
 
 #if 0
 /**
@@ -959,14 +970,15 @@ EXPORT_SYMBOL_GPL(usb_disabled);
  * Notifications of device and interface registration
  */
 static int usb_bus_notify(struct notifier_block *nb, unsigned long action,
-		void *data)
+						  void *data)
 {
 	struct device *dev = data;
 
-	switch (action) {
+	switch (action)
+	{
 	case BUS_NOTIFY_ADD_DEVICE:
 		if (dev->type == &usb_device_type)
-			(void) usb_create_sysfs_dev_files(to_usb_device(dev));
+			(void)usb_create_sysfs_dev_files(to_usb_device(dev));
 		else if (dev->type == &usb_if_device_type)
 			usb_create_sysfs_intf_files(to_usb_interface(dev));
 		break;
@@ -997,9 +1009,10 @@ static int usb_debugfs_init(void)
 		return -ENOENT;
 
 	usb_debug_devices = debugfs_create_file("devices", 0444,
-						usb_debug_root, NULL,
-						&usbfs_devices_fops);
-	if (!usb_debug_devices) {
+											usb_debug_root, NULL,
+											&usbfs_devices_fops);
+	if (!usb_debug_devices)
+	{
 		debugfs_remove(usb_debug_root);
 		usb_debug_root = NULL;
 		return -ENOENT;
@@ -1020,7 +1033,8 @@ static void usb_debugfs_cleanup(void)
 static int __init usb_init(void)
 {
 	int retval;
-	if (nousb) {
+	if (nousb)
+	{
 		pr_info("%s: USB support disabled\n", usbcore_name);
 		return 0;
 	}

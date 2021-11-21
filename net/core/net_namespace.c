@@ -31,7 +31,7 @@ struct net init_net = {
 };
 EXPORT_SYMBOL(init_net);
 
-#define INITIAL_NET_GEN_PTRS	13 /* +1 for len +2 for rcu_head */
+#define INITIAL_NET_GEN_PTRS 13 /* +1 for len +2 for rcu_head */
 
 static unsigned int max_gen_ptrs = INITIAL_NET_GEN_PTRS;
 
@@ -55,7 +55,7 @@ static int net_assign_generic(struct net *net, int id, void *data)
 	BUG_ON(id == 0);
 
 	old_ng = rcu_dereference_protected(net->gen,
-					   lockdep_is_held(&net_mutex));
+									   lockdep_is_held(&net_mutex));
 	ng = old_ng;
 	if (old_ng->len >= id)
 		goto assign;
@@ -75,7 +75,7 @@ static int net_assign_generic(struct net *net, int id, void *data)
 	 * the old copy for kfree after a grace period.
 	 */
 
-	memcpy(&ng->ptr, &old_ng->ptr, old_ng->len * sizeof(void*));
+	memcpy(&ng->ptr, &old_ng->ptr, old_ng->len * sizeof(void *));
 
 	rcu_assign_pointer(net->gen, ng);
 	kfree_rcu(old_ng, rcu);
@@ -89,7 +89,8 @@ static int ops_init(const struct pernet_operations *ops, struct net *net)
 	int err = -ENOMEM;
 	void *data = NULL;
 
-	if (ops->id && ops->size) {
+	if (ops->id && ops->size)
+	{
 		data = kzalloc(ops->size, GFP_KERNEL);
 		if (!data)
 			goto out;
@@ -113,17 +114,19 @@ out:
 
 static void ops_free(const struct pernet_operations *ops, struct net *net)
 {
-	if (ops->id && ops->size) {
+	if (ops->id && ops->size)
+	{
 		int id = *ops->id;
 		kfree(net_generic(net, id));
 	}
 }
 
 static void ops_exit_list(const struct pernet_operations *ops,
-			  struct list_head *net_exit_list)
+						  struct list_head *net_exit_list)
 {
 	struct net *net;
-	if (ops->exit) {
+	if (ops->exit)
+	{
 		list_for_each_entry(net, net_exit_list, exit_list)
 			ops->exit(net);
 	}
@@ -132,10 +135,11 @@ static void ops_exit_list(const struct pernet_operations *ops,
 }
 
 static void ops_free_list(const struct pernet_operations *ops,
-			  struct list_head *net_exit_list)
+						  struct list_head *net_exit_list)
 {
 	struct net *net;
-	if (ops->size && ops->id) {
+	if (ops->size && ops->id)
+	{
 		list_for_each_entry(net, net_exit_list, exit_list)
 			ops_free(ops, net);
 	}
@@ -153,6 +157,7 @@ static __net_init int setup_net(struct net *net, struct user_namespace *user_ns)
 
 	atomic_set(&net->count, 1);
 	atomic_set(&net->passive, 1);
+	get_random_bytes(&net->hash_mix, sizeof(u32));
 	net->dev_base_seq = 1;
 	net->user_ns = user_ns;
 
@@ -160,7 +165,8 @@ static __net_init int setup_net(struct net *net, struct user_namespace *user_ns)
 	atomic_set(&net->use_count, 0);
 #endif
 
-	list_for_each_entry(ops, &pernet_list, list) {
+	list_for_each_entry(ops, &pernet_list, list)
+	{
 		error = ops_init(ops, net);
 		if (error < 0)
 			goto out_undo;
@@ -184,7 +190,6 @@ out_undo:
 	rcu_barrier();
 	goto out;
 }
-
 
 #ifdef CONFIG_NET_NS
 static struct kmem_cache *net_cachep;
@@ -215,9 +220,10 @@ out_free:
 static void net_free(struct net *net)
 {
 #ifdef NETNS_REFCNT_DEBUG
-	if (unlikely(atomic_read(&net->use_count) != 0)) {
+	if (unlikely(atomic_read(&net->use_count) != 0))
+	{
 		printk(KERN_EMERG "network namespace not free! Usage: %d\n",
-			atomic_read(&net->use_count));
+			   atomic_read(&net->use_count));
 		return;
 	}
 #endif
@@ -233,7 +239,7 @@ void net_drop_ns(void *p)
 }
 
 struct net *copy_net_ns(unsigned long flags,
-			struct user_namespace *user_ns, struct net *old_net)
+						struct user_namespace *user_ns, struct net *old_net)
 {
 	struct net *net;
 	int rv;
@@ -249,13 +255,15 @@ struct net *copy_net_ns(unsigned long flags,
 
 	mutex_lock(&net_mutex);
 	rv = setup_net(net, user_ns);
-	if (rv == 0) {
+	if (rv == 0)
+	{
 		rtnl_lock();
 		list_add_tail_rcu(&net->list, &net_namespace_list);
 		rtnl_unlock();
 	}
 	mutex_unlock(&net_mutex);
-	if (rv < 0) {
+	if (rv < 0)
+	{
 		put_user_ns(user_ns);
 		net_drop_ns(net);
 		return ERR_PTR(rv);
@@ -264,7 +272,7 @@ struct net *copy_net_ns(unsigned long flags,
 }
 
 static DEFINE_SPINLOCK(cleanup_list_lock);
-static LIST_HEAD(cleanup_list);  /* Must hold cleanup_list_lock to touch */
+static LIST_HEAD(cleanup_list); /* Must hold cleanup_list_lock to touch */
 
 static void cleanup_net(struct work_struct *work)
 {
@@ -282,7 +290,8 @@ static void cleanup_net(struct work_struct *work)
 
 	/* Don't let anyone else find us. */
 	rtnl_lock();
-	list_for_each_entry(net, &net_kill_list, cleanup_list) {
+	list_for_each_entry(net, &net_kill_list, cleanup_list)
+	{
 		list_del_rcu(&net->list);
 		list_add_tail(&net->exit_list, &net_exit_list);
 	}
@@ -311,7 +320,8 @@ static void cleanup_net(struct work_struct *work)
 	rcu_barrier();
 
 	/* Finally it is safe to free my network namespace structure */
-	list_for_each_entry_safe(net, tmp, &net_exit_list, exit_list) {
+	list_for_each_entry_safe(net, tmp, &net_exit_list, exit_list)
+	{
 		list_del_init(&net->exit_list);
 		put_user_ns(net->user_ns);
 		net_drop_ns(net);
@@ -375,7 +385,8 @@ struct net *get_net_ns_by_pid(pid_t pid)
 	net = ERR_PTR(-ESRCH);
 	rcu_read_lock();
 	tsk = find_task_by_vpid(pid);
-	if (tsk) {
+	if (tsk)
+	{
 		struct nsproxy *nsproxy;
 		nsproxy = task_nsproxy(tsk);
 		if (nsproxy)
@@ -407,8 +418,8 @@ static int __init net_ns_init(void)
 
 #ifdef CONFIG_NET_NS
 	net_cachep = kmem_cache_create("net_namespace", sizeof(struct net),
-					SMP_CACHE_BYTES,
-					SLAB_PANIC, NULL);
+								   SMP_CACHE_BYTES,
+								   SLAB_PANIC, NULL);
 
 	/* Create workqueue for cleanup */
 	netns_wq = create_singlethread_workqueue("netns");
@@ -441,15 +452,17 @@ pure_initcall(net_ns_init);
 
 #ifdef CONFIG_NET_NS
 static int __register_pernet_operations(struct list_head *list,
-					struct pernet_operations *ops)
+										struct pernet_operations *ops)
 {
 	struct net *net;
 	int error;
 	LIST_HEAD(net_exit_list);
 
 	list_add_tail(&ops->list, list);
-	if (ops->init || (ops->id && ops->size)) {
-		for_each_net(net) {
+	if (ops->init || (ops->id && ops->size))
+	{
+		for_each_net(net)
+		{
 			error = ops_init(ops, net);
 			if (error)
 				goto out_undo;
@@ -481,7 +494,7 @@ static void __unregister_pernet_operations(struct pernet_operations *ops)
 #else
 
 static int __register_pernet_operations(struct list_head *list,
-					struct pernet_operations *ops)
+										struct pernet_operations *ops)
 {
 	return ops_init(ops, &init_net);
 }
@@ -499,15 +512,18 @@ static void __unregister_pernet_operations(struct pernet_operations *ops)
 static DEFINE_IDA(net_generic_ids);
 
 static int register_pernet_operations(struct list_head *list,
-				      struct pernet_operations *ops)
+									  struct pernet_operations *ops)
 {
 	int error;
 
-	if (ops->id) {
-again:
+	if (ops->id)
+	{
+	again:
 		error = ida_get_new_above(&net_generic_ids, 1, ops->id);
-		if (error < 0) {
-			if (error == -EAGAIN) {
+		if (error < 0)
+		{
+			if (error == -EAGAIN)
+			{
 				ida_pre_get(&net_generic_ids, GFP_KERNEL);
 				goto again;
 			}
@@ -516,7 +532,8 @@ again:
 		max_gen_ptrs = max_t(unsigned int, max_gen_ptrs, *ops->id);
 	}
 	error = __register_pernet_operations(list, ops);
-	if (error) {
+	if (error)
+	{
 		rcu_barrier();
 		if (ops->id)
 			ida_remove(&net_generic_ids, *ops->id);
@@ -527,7 +544,7 @@ again:
 
 static void unregister_pernet_operations(struct pernet_operations *ops)
 {
-	
+
 	__unregister_pernet_operations(ops);
 	rcu_barrier();
 	if (ops->id)
@@ -557,7 +574,7 @@ int register_pernet_subsys(struct pernet_operations *ops)
 {
 	int error;
 	mutex_lock(&net_mutex);
-	error =  register_pernet_operations(first_device, ops);
+	error = register_pernet_operations(first_device, ops);
 	mutex_unlock(&net_mutex);
 	return error;
 }
@@ -664,11 +681,11 @@ static unsigned int netns_inum(void *ns)
 }
 
 const struct proc_ns_operations netns_operations = {
-	.name		= "net",
-	.type		= CLONE_NEWNET,
-	.get		= netns_get,
-	.put		= netns_put,
-	.install	= netns_install,
-	.inum		= netns_inum,
+	.name = "net",
+	.type = CLONE_NEWNET,
+	.get = netns_get,
+	.put = netns_put,
+	.install = netns_install,
+	.inum = netns_inum,
 };
 #endif

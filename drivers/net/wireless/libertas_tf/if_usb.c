@@ -21,10 +21,15 @@
 #include <linux/slab.h>
 #include <linux/usb.h>
 
-#define INSANEDEBUG	0
-#define lbtf_deb_usb2(...) do { if (INSANEDEBUG) lbtf_deb_usbd(__VA_ARGS__); } while (0)
+#define INSANEDEBUG 0
+#define lbtf_deb_usb2(...)              \
+	do                                  \
+	{                                   \
+		if (INSANEDEBUG)                \
+			lbtf_deb_usbd(__VA_ARGS__); \
+	} while (0)
 
-#define MESSAGE_HEADER_LEN	4
+#define MESSAGE_HEADER_LEN 4
 
 static char *lbtf_fw_name = "lbtf_usb.bin";
 module_param_named(fw_name, lbtf_fw_name, charp, 0644);
@@ -33,9 +38,9 @@ MODULE_FIRMWARE("lbtf_usb.bin");
 
 static struct usb_device_id if_usb_table[] = {
 	/* Enter the device signature inside */
-	{ USB_DEVICE(0x1286, 0x2001) },
-	{ USB_DEVICE(0x05a3, 0x8388) },
-	{}	/* Terminating entry */
+	{USB_DEVICE(0x1286, 0x2001)},
+	{USB_DEVICE(0x05a3, 0x8388)},
+	{} /* Terminating entry */
 };
 
 MODULE_DEVICE_TABLE(usb, if_usb_table);
@@ -44,9 +49,9 @@ static void if_usb_receive(struct urb *urb);
 static void if_usb_receive_fwload(struct urb *urb);
 static int if_usb_prog_firmware(struct if_usb_card *cardp);
 static int if_usb_host_to_card(struct lbtf_private *priv, uint8_t type,
-			       uint8_t *payload, uint16_t nb);
+							   uint8_t *payload, uint16_t nb);
 static int usb_tx_block(struct if_usb_card *cardp, uint8_t *payload,
-			uint16_t nb, u8 data);
+						uint16_t nb, u8 data);
 static void if_usb_free(struct if_usb_card *cardp);
 static int if_usb_submit_rx_urb(struct if_usb_card *cardp);
 static int if_usb_reset_device(struct if_usb_card *cardp);
@@ -58,13 +63,16 @@ static int if_usb_reset_device(struct if_usb_card *cardp);
  */
 static void if_usb_write_bulk_callback(struct urb *urb)
 {
-	if (urb->status != 0) {
+	if (urb->status != 0)
+	{
 		/* print the failure status number for debug */
 		pr_info("URB in failure status: %d\n", urb->status);
-	} else {
+	}
+	else
+	{
 		lbtf_deb_usb2(&urb->dev->dev, "URB status is successful\n");
 		lbtf_deb_usb2(&urb->dev->dev, "Actual length transmitted %d\n",
-			     urb->actual_length);
+					  urb->actual_length);
 	}
 }
 
@@ -120,11 +128,14 @@ static void if_usb_fw_timeo(unsigned long priv)
 	struct if_usb_card *cardp = (void *)priv;
 
 	lbtf_deb_enter(LBTF_DEB_USB);
-	if (!cardp->fwdnldover) {
+	if (!cardp->fwdnldover)
+	{
 		/* Download timed out */
 		cardp->priv->surpriseremoved = 1;
 		pr_err("Download timed out\n");
-	} else {
+	}
+	else
+	{
 		lbtf_deb_usb("Download complete, no event. Assuming success\n");
 	}
 	wake_up(&cardp->fw_wq);
@@ -140,7 +151,7 @@ static void if_usb_fw_timeo(unsigned long priv)
  *  Returns: 0 on success, error code on failure
  */
 static int if_usb_probe(struct usb_interface *intf,
-			const struct usb_device_id *id)
+						const struct usb_device_id *id)
 {
 	struct usb_device *udev;
 	struct usb_host_interface *iface_desc;
@@ -163,61 +174,70 @@ static int if_usb_probe(struct usb_interface *intf,
 	iface_desc = intf->cur_altsetting;
 
 	lbtf_deb_usbd(&udev->dev, "bcdUSB = 0x%X bDeviceClass = 0x%X"
-		     " bDeviceSubClass = 0x%X, bDeviceProtocol = 0x%X\n",
-		     le16_to_cpu(udev->descriptor.bcdUSB),
-		     udev->descriptor.bDeviceClass,
-		     udev->descriptor.bDeviceSubClass,
-		     udev->descriptor.bDeviceProtocol);
+							  " bDeviceSubClass = 0x%X, bDeviceProtocol = 0x%X\n",
+				  le16_to_cpu(udev->descriptor.bcdUSB),
+				  udev->descriptor.bDeviceClass,
+				  udev->descriptor.bDeviceSubClass,
+				  udev->descriptor.bDeviceProtocol);
 
-	for (i = 0; i < iface_desc->desc.bNumEndpoints; ++i) {
+	for (i = 0; i < iface_desc->desc.bNumEndpoints; ++i)
+	{
 		endpoint = &iface_desc->endpoint[i].desc;
-		if (usb_endpoint_is_bulk_in(endpoint)) {
+		if (usb_endpoint_is_bulk_in(endpoint))
+		{
 			cardp->ep_in_size =
 				le16_to_cpu(endpoint->wMaxPacketSize);
 			cardp->ep_in = usb_endpoint_num(endpoint);
 
 			lbtf_deb_usbd(&udev->dev, "in_endpoint = %d\n",
-				cardp->ep_in);
+						  cardp->ep_in);
 			lbtf_deb_usbd(&udev->dev, "Bulk in size is %d\n",
-				cardp->ep_in_size);
-		} else if (usb_endpoint_is_bulk_out(endpoint)) {
+						  cardp->ep_in_size);
+		}
+		else if (usb_endpoint_is_bulk_out(endpoint))
+		{
 			cardp->ep_out_size =
 				le16_to_cpu(endpoint->wMaxPacketSize);
 			cardp->ep_out = usb_endpoint_num(endpoint);
 
 			lbtf_deb_usbd(&udev->dev, "out_endpoint = %d\n",
-				cardp->ep_out);
+						  cardp->ep_out);
 			lbtf_deb_usbd(&udev->dev, "Bulk out size is %d\n",
-				cardp->ep_out_size);
+						  cardp->ep_out_size);
 		}
 	}
-	if (!cardp->ep_out_size || !cardp->ep_in_size) {
+	if (!cardp->ep_out_size || !cardp->ep_in_size)
+	{
 		lbtf_deb_usbd(&udev->dev, "Endpoints not found\n");
 		/* Endpoints not found */
 		goto dealloc;
 	}
 
 	cardp->rx_urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!cardp->rx_urb) {
+	if (!cardp->rx_urb)
+	{
 		lbtf_deb_usbd(&udev->dev, "Rx URB allocation failed\n");
 		goto dealloc;
 	}
 
 	cardp->tx_urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!cardp->tx_urb) {
+	if (!cardp->tx_urb)
+	{
 		lbtf_deb_usbd(&udev->dev, "Tx URB allocation failed\n");
 		goto dealloc;
 	}
 
 	cardp->cmd_urb = usb_alloc_urb(0, GFP_KERNEL);
-	if (!cardp->cmd_urb) {
+	if (!cardp->cmd_urb)
+	{
 		lbtf_deb_usbd(&udev->dev, "Cmd URB allocation failed\n");
 		goto dealloc;
 	}
 
 	cardp->ep_out_buf = kmalloc(MRVDRV_ETH_TX_PACKET_BUFFER_SIZE,
-				    GFP_KERNEL);
-	if (!cardp->ep_out_buf) {
+								GFP_KERNEL);
+	if (!cardp->ep_out_buf)
+	{
 		lbtf_deb_usbd(&udev->dev, "Could not allocate buffer\n");
 		goto dealloc;
 	}
@@ -241,7 +261,7 @@ static int if_usb_probe(struct usb_interface *intf,
 dealloc:
 	if_usb_free(cardp);
 error:
-lbtf_deb_leave(LBTF_DEB_MAIN);
+	lbtf_deb_leave(LBTF_DEB_MAIN);
 	return -ENOMEM;
 }
 
@@ -253,7 +273,7 @@ lbtf_deb_leave(LBTF_DEB_MAIN);
 static void if_usb_disconnect(struct usb_interface *intf)
 {
 	struct if_usb_card *cardp = usb_get_intfdata(intf);
-	struct lbtf_private *priv = (struct lbtf_private *) cardp->priv;
+	struct lbtf_private *priv = (struct lbtf_private *)cardp->priv;
 
 	lbtf_deb_enter(LBTF_DEB_MAIN);
 
@@ -281,50 +301,53 @@ static void if_usb_disconnect(struct usb_interface *intf)
 static int if_usb_send_fw_pkt(struct if_usb_card *cardp)
 {
 	struct fwdata *fwdata = cardp->ep_out_buf;
-	u8 *firmware = (u8 *) cardp->fw->data;
+	u8 *firmware = (u8 *)cardp->fw->data;
 
 	lbtf_deb_enter(LBTF_DEB_FW);
 
 	/* If we got a CRC failure on the last block, back
 	   up and retry it */
-	if (!cardp->CRC_OK) {
+	if (!cardp->CRC_OK)
+	{
 		cardp->totalbytes = cardp->fwlastblksent;
 		cardp->fwseqnum--;
 	}
 
 	lbtf_deb_usb2(&cardp->udev->dev, "totalbytes = %d\n",
-		     cardp->totalbytes);
+				  cardp->totalbytes);
 
 	/* struct fwdata (which we sent to the card) has an
 	   extra __le32 field in between the header and the data,
 	   which is not in the struct fwheader in the actual
 	   firmware binary. Insert the seqnum in the middle... */
 	memcpy(&fwdata->hdr, &firmware[cardp->totalbytes],
-	       sizeof(struct fwheader));
+		   sizeof(struct fwheader));
 
 	cardp->fwlastblksent = cardp->totalbytes;
 	cardp->totalbytes += sizeof(struct fwheader);
 
 	memcpy(fwdata->data, &firmware[cardp->totalbytes],
-	       le32_to_cpu(fwdata->hdr.datalength));
+		   le32_to_cpu(fwdata->hdr.datalength));
 
 	lbtf_deb_usb2(&cardp->udev->dev, "Data length = %d\n",
-		     le32_to_cpu(fwdata->hdr.datalength));
+				  le32_to_cpu(fwdata->hdr.datalength));
 
 	fwdata->seqnum = cpu_to_le32(++cardp->fwseqnum);
 	cardp->totalbytes += le32_to_cpu(fwdata->hdr.datalength);
 
-	usb_tx_block(cardp, cardp->ep_out_buf, sizeof(struct fwdata) +
-		     le32_to_cpu(fwdata->hdr.datalength), 0);
+	usb_tx_block(cardp, cardp->ep_out_buf, sizeof(struct fwdata) + le32_to_cpu(fwdata->hdr.datalength), 0);
 
-	if (fwdata->hdr.dnldcmd == cpu_to_le32(FW_HAS_DATA_TO_RECV)) {
+	if (fwdata->hdr.dnldcmd == cpu_to_le32(FW_HAS_DATA_TO_RECV))
+	{
 		lbtf_deb_usb2(&cardp->udev->dev, "There are data to follow\n");
 		lbtf_deb_usb2(&cardp->udev->dev,
-			"seqnum = %d totalbytes = %d\n",
-			cardp->fwseqnum, cardp->totalbytes);
-	} else if (fwdata->hdr.dnldcmd == cpu_to_le32(FW_HAS_LAST_BLOCK)) {
+					  "seqnum = %d totalbytes = %d\n",
+					  cardp->fwseqnum, cardp->totalbytes);
+	}
+	else if (fwdata->hdr.dnldcmd == cpu_to_le32(FW_HAS_LAST_BLOCK))
+	{
 		lbtf_deb_usb2(&cardp->udev->dev,
-			"Host has finished FW downloading\n");
+					  "Host has finished FW downloading\n");
 		lbtf_deb_usb2(&cardp->udev->dev, "Donwloading FW JUMP BLOCK\n");
 
 		/* Host has finished FW downloading
@@ -334,7 +357,7 @@ static int if_usb_send_fw_pkt(struct if_usb_card *cardp)
 	}
 
 	lbtf_deb_usb2(&cardp->udev->dev, "Firmware download done; size %d\n",
-		     cardp->totalbytes);
+				  cardp->totalbytes);
 
 	lbtf_deb_leave(LBTF_DEB_FW);
 	return 0;
@@ -355,7 +378,7 @@ static int if_usb_reset_device(struct if_usb_card *cardp)
 	cmd->hdr.seqnum = cpu_to_le16(0x5a5a);
 	cmd->action = cpu_to_le16(CMD_ACT_HALT);
 	usb_tx_block(cardp, cardp->ep_out_buf,
-		     4 + sizeof(struct cmd_ds_802_11_reset), 0);
+				 4 + sizeof(struct cmd_ds_802_11_reset), 0);
 
 	msleep(100);
 	ret = usb_reset_device(cardp->udev);
@@ -378,14 +401,15 @@ EXPORT_SYMBOL_GPL(if_usb_reset_device);
  *  Returns: 0 on success, nonzero otherwise.
  */
 static int usb_tx_block(struct if_usb_card *cardp, uint8_t *payload,
-			uint16_t nb, u8 data)
+						uint16_t nb, u8 data)
 {
 	int ret = -1;
 	struct urb *urb;
 
 	lbtf_deb_enter(LBTF_DEB_USB);
 	/* check if device is removed */
-	if (cardp->priv->surpriseremoved) {
+	if (cardp->priv->surpriseremoved)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev, "Device removed\n");
 		goto tx_ret;
 	}
@@ -396,15 +420,16 @@ static int usb_tx_block(struct if_usb_card *cardp, uint8_t *payload,
 		urb = cardp->cmd_urb;
 
 	usb_fill_bulk_urb(urb, cardp->udev,
-			  usb_sndbulkpipe(cardp->udev,
-					  cardp->ep_out),
-			  payload, nb, if_usb_write_bulk_callback, cardp);
+					  usb_sndbulkpipe(cardp->udev,
+									  cardp->ep_out),
+					  payload, nb, if_usb_write_bulk_callback, cardp);
 
 	urb->transfer_flags |= URB_ZERO_PACKET;
 
-	if (usb_submit_urb(urb, GFP_ATOMIC)) {
+	if (usb_submit_urb(urb, GFP_ATOMIC))
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			"usb_submit_urb failed: %d\n", ret);
+					  "usb_submit_urb failed: %d\n", ret);
 		goto tx_ret;
 	}
 
@@ -418,7 +443,7 @@ tx_ret:
 }
 
 static int __if_usb_submit_rx_urb(struct if_usb_card *cardp,
-				  void (*callbackfn)(struct urb *urb))
+								  void (*callbackfn)(struct urb *urb))
 {
 	struct sk_buff *skb;
 	int ret = -1;
@@ -426,7 +451,8 @@ static int __if_usb_submit_rx_urb(struct if_usb_card *cardp,
 	lbtf_deb_enter(LBTF_DEB_USB);
 
 	skb = dev_alloc_skb(MRVDRV_ETH_RX_PACKET_BUFFER_SIZE);
-	if (!skb) {
+	if (!skb)
+	{
 		pr_err("No free skb\n");
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return -1;
@@ -436,23 +462,24 @@ static int __if_usb_submit_rx_urb(struct if_usb_card *cardp,
 
 	/* Fill the receive configuration URB and initialise the Rx call back */
 	usb_fill_bulk_urb(cardp->rx_urb, cardp->udev,
-			  usb_rcvbulkpipe(cardp->udev, cardp->ep_in),
-			  skb_tail_pointer(skb),
-			  MRVDRV_ETH_RX_PACKET_BUFFER_SIZE, callbackfn, cardp);
-
-	cardp->rx_urb->transfer_flags |= URB_ZERO_PACKET;
+					  usb_rcvbulkpipe(cardp->udev, cardp->ep_in),
+					  skb_tail_pointer(skb),
+					  MRVDRV_ETH_RX_PACKET_BUFFER_SIZE, callbackfn, cardp);
 
 	lbtf_deb_usb2(&cardp->udev->dev, "Pointer for rx_urb %p\n",
-		cardp->rx_urb);
+				  cardp->rx_urb);
 	ret = usb_submit_urb(cardp->rx_urb, GFP_ATOMIC);
-	if (ret) {
+	if (ret)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			"Submit Rx URB failed: %d\n", ret);
+					  "Submit Rx URB failed: %d\n", ret);
 		kfree_skb(skb);
 		cardp->rx_skb = NULL;
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return -1;
-	} else {
+	}
+	else
+	{
 		lbtf_deb_usb2(&cardp->udev->dev, "Submit Rx URB success\n");
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return 0;
@@ -477,65 +504,82 @@ static void if_usb_receive_fwload(struct urb *urb)
 	struct bootcmdresp bcmdresp;
 
 	lbtf_deb_enter(LBTF_DEB_USB);
-	if (urb->status) {
+	if (urb->status)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			     "URB status is failed during fw load\n");
+					  "URB status is failed during fw load\n");
 		kfree_skb(skb);
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return;
 	}
 
-	if (cardp->fwdnldover) {
+	if (cardp->fwdnldover)
+	{
 		__le32 *tmp = (__le32 *)(skb->data);
 
 		if (tmp[0] == cpu_to_le32(CMD_TYPE_INDICATION) &&
-		    tmp[1] == cpu_to_le32(MACREG_INT_CODE_FIRMWARE_READY)) {
+			tmp[1] == cpu_to_le32(MACREG_INT_CODE_FIRMWARE_READY))
+		{
 			/* Firmware ready event received */
 			pr_info("Firmware ready event received\n");
 			wake_up(&cardp->fw_wq);
-		} else {
+		}
+		else
+		{
 			lbtf_deb_usb("Waiting for confirmation; got %x %x\n",
-				    le32_to_cpu(tmp[0]), le32_to_cpu(tmp[1]));
+						 le32_to_cpu(tmp[0]), le32_to_cpu(tmp[1]));
 			if_usb_submit_rx_urb_fwload(cardp);
 		}
 		kfree_skb(skb);
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return;
 	}
-	if (cardp->bootcmdresp <= 0) {
+	if (cardp->bootcmdresp <= 0)
+	{
 		memcpy(&bcmdresp, skb->data, sizeof(bcmdresp));
 
-		if (le16_to_cpu(cardp->udev->descriptor.bcdDevice) < 0x3106) {
+		if (le16_to_cpu(cardp->udev->descriptor.bcdDevice) < 0x3106)
+		{
 			kfree_skb(skb);
 			if_usb_submit_rx_urb_fwload(cardp);
 			cardp->bootcmdresp = 1;
 			/* Received valid boot command response */
 			lbtf_deb_usbd(&cardp->udev->dev,
-				     "Received valid boot command response\n");
+						  "Received valid boot command response\n");
 			lbtf_deb_leave(LBTF_DEB_USB);
 			return;
 		}
-		if (bcmdresp.magic != cpu_to_le32(BOOT_CMD_MAGIC_NUMBER)) {
+		if (bcmdresp.magic != cpu_to_le32(BOOT_CMD_MAGIC_NUMBER))
+		{
 			if (bcmdresp.magic == cpu_to_le32(CMD_TYPE_REQUEST) ||
-			    bcmdresp.magic == cpu_to_le32(CMD_TYPE_DATA) ||
-			    bcmdresp.magic == cpu_to_le32(CMD_TYPE_INDICATION)) {
+				bcmdresp.magic == cpu_to_le32(CMD_TYPE_DATA) ||
+				bcmdresp.magic == cpu_to_le32(CMD_TYPE_INDICATION))
+			{
 				if (!cardp->bootcmdresp)
 					pr_info("Firmware already seems alive; resetting\n");
 				cardp->bootcmdresp = -1;
-			} else {
-				pr_info("boot cmd response wrong magic number (0x%x)\n",
-					    le32_to_cpu(bcmdresp.magic));
 			}
-		} else if (bcmdresp.cmd != BOOT_CMD_FW_BY_USB) {
+			else
+			{
+				pr_info("boot cmd response wrong magic number (0x%x)\n",
+						le32_to_cpu(bcmdresp.magic));
+			}
+		}
+		else if (bcmdresp.cmd != BOOT_CMD_FW_BY_USB)
+		{
 			pr_info("boot cmd response cmd_tag error (%d)\n",
-				bcmdresp.cmd);
-		} else if (bcmdresp.result != BOOT_CMD_RESP_OK) {
+					bcmdresp.cmd);
+		}
+		else if (bcmdresp.result != BOOT_CMD_RESP_OK)
+		{
 			pr_info("boot cmd response result error (%d)\n",
-				bcmdresp.result);
-		} else {
+					bcmdresp.result);
+		}
+		else
+		{
 			cardp->bootcmdresp = 1;
 			lbtf_deb_usbd(&cardp->udev->dev,
-				"Received valid boot command response\n");
+						  "Received valid boot command response\n");
 		}
 
 		kfree_skb(skb);
@@ -545,41 +589,46 @@ static void if_usb_receive_fwload(struct urb *urb)
 	}
 
 	syncfwheader = kmemdup(skb->data, sizeof(struct fwsyncheader),
-			       GFP_ATOMIC);
-	if (!syncfwheader) {
+						   GFP_ATOMIC);
+	if (!syncfwheader)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			"Failure to allocate syncfwheader\n");
+					  "Failure to allocate syncfwheader\n");
 		kfree_skb(skb);
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return;
 	}
 
-	if (!syncfwheader->cmd) {
+	if (!syncfwheader->cmd)
+	{
 		lbtf_deb_usb2(&cardp->udev->dev,
-			"FW received Blk with correct CRC\n");
+					  "FW received Blk with correct CRC\n");
 		lbtf_deb_usb2(&cardp->udev->dev,
-			"FW received Blk seqnum = %d\n",
-			le32_to_cpu(syncfwheader->seqnum));
+					  "FW received Blk seqnum = %d\n",
+					  le32_to_cpu(syncfwheader->seqnum));
 		cardp->CRC_OK = 1;
-	} else {
+	}
+	else
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			"FW received Blk with CRC error\n");
+					  "FW received Blk with CRC error\n");
 		cardp->CRC_OK = 0;
 	}
 
 	kfree_skb(skb);
 
 	/* reschedule timer for 200ms hence */
-	mod_timer(&cardp->fw_timeout, jiffies + (HZ/5));
+	mod_timer(&cardp->fw_timeout, jiffies + (HZ / 5));
 
-	if (cardp->fwfinalblk) {
+	if (cardp->fwfinalblk)
+	{
 		cardp->fwdnldover = 1;
 		goto exit;
 	}
 
 	if_usb_send_fw_pkt(cardp);
 
- exit:
+exit:
 	if_usb_submit_rx_urb_fwload(cardp);
 
 	kfree(syncfwheader);
@@ -587,14 +636,14 @@ static void if_usb_receive_fwload(struct urb *urb)
 	lbtf_deb_leave(LBTF_DEB_USB);
 }
 
-#define MRVDRV_MIN_PKT_LEN	30
+#define MRVDRV_MIN_PKT_LEN 30
 
 static inline void process_cmdtypedata(int recvlength, struct sk_buff *skb,
-				       struct if_usb_card *cardp,
-				       struct lbtf_private *priv)
+									   struct if_usb_card *cardp,
+									   struct lbtf_private *priv)
 {
-	if (recvlength > MRVDRV_ETH_RX_PACKET_BUFFER_SIZE + MESSAGE_HEADER_LEN
-	    || recvlength < MRVDRV_MIN_PKT_LEN) {
+	if (recvlength > MRVDRV_ETH_RX_PACKET_BUFFER_SIZE + MESSAGE_HEADER_LEN || recvlength < MRVDRV_MIN_PKT_LEN)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev, "Packet length is Invalid\n");
 		kfree_skb(skb);
 		return;
@@ -606,13 +655,14 @@ static inline void process_cmdtypedata(int recvlength, struct sk_buff *skb,
 }
 
 static inline void process_cmdrequest(int recvlength, uint8_t *recvbuff,
-				      struct sk_buff *skb,
-				      struct if_usb_card *cardp,
-				      struct lbtf_private *priv)
+									  struct sk_buff *skb,
+									  struct if_usb_card *cardp,
+									  struct lbtf_private *priv)
 {
-	if (recvlength > LBS_CMD_BUFFER_SIZE) {
+	if (recvlength > LBS_CMD_BUFFER_SIZE)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev,
-			     "The receive buffer is too large\n");
+					  "The receive buffer is too large\n");
 		kfree_skb(skb);
 		return;
 	}
@@ -621,7 +671,7 @@ static inline void process_cmdrequest(int recvlength, uint8_t *recvbuff,
 
 	spin_lock(&priv->driver_lock);
 	memcpy(priv->cmd_resp_buff, recvbuff + MESSAGE_HEADER_LEN,
-	       recvlength - MESSAGE_HEADER_LEN);
+		   recvlength - MESSAGE_HEADER_LEN);
 	kfree_skb(skb);
 	lbtf_cmd_response_rx(priv);
 	spin_unlock(&priv->driver_lock);
@@ -640,14 +690,16 @@ static void if_usb_receive(struct urb *urb)
 	int recvlength = urb->actual_length;
 	uint8_t *recvbuff = NULL;
 	uint32_t recvtype = 0;
-	__le32 *pkt = (__le32 *) skb->data;
+	__le32 *pkt = (__le32 *)skb->data;
 
 	lbtf_deb_enter(LBTF_DEB_USB);
 
-	if (recvlength) {
-		if (urb->status) {
+	if (recvlength)
+	{
+		if (urb->status)
+		{
 			lbtf_deb_usbd(&cardp->udev->dev, "RX URB failed: %d\n",
-				     urb->status);
+						  urb->status);
 			kfree_skb(skb);
 			goto setup_for_next;
 		}
@@ -655,15 +707,18 @@ static void if_usb_receive(struct urb *urb)
 		recvbuff = skb->data;
 		recvtype = le32_to_cpu(pkt[0]);
 		lbtf_deb_usbd(&cardp->udev->dev,
-			    "Recv length = 0x%x, Recv type = 0x%X\n",
-			    recvlength, recvtype);
-	} else if (urb->status) {
+					  "Recv length = 0x%x, Recv type = 0x%X\n",
+					  recvlength, recvtype);
+	}
+	else if (urb->status)
+	{
 		kfree_skb(skb);
 		lbtf_deb_leave(LBTF_DEB_USB);
 		return;
 	}
 
-	switch (recvtype) {
+	switch (recvtype)
+	{
 	case CMD_TYPE_DATA:
 		process_cmdtypedata(recvlength, skb, cardp, priv);
 		break;
@@ -677,10 +732,11 @@ static void if_usb_receive(struct urb *urb)
 		/* Event cause handling */
 		u32 event_cause = le32_to_cpu(pkt[1]);
 		lbtf_deb_usbd(&cardp->udev->dev, "**EVENT** 0x%X\n",
-			event_cause);
+					  event_cause);
 
 		/* Icky undocumented magic special case */
-		if (event_cause & 0xffff0000) {
+		if (event_cause & 0xffff0000)
+		{
 			u16 tmp;
 			u8 retrycnt;
 			u8 failure;
@@ -689,18 +745,19 @@ static void if_usb_receive(struct urb *urb)
 			retrycnt = tmp & 0x00ff;
 			failure = (tmp & 0xff00) >> 8;
 			lbtf_send_tx_feedback(priv, retrycnt, failure);
-		} else if (event_cause == LBTF_EVENT_BCN_SENT)
+		}
+		else if (event_cause == LBTF_EVENT_BCN_SENT)
 			lbtf_bcn_sent(priv);
 		else
 			lbtf_deb_usbd(&cardp->udev->dev,
-			       "Unsupported notification %d received\n",
-			       event_cause);
+						  "Unsupported notification %d received\n",
+						  event_cause);
 		kfree_skb(skb);
 		break;
 	}
 	default:
 		lbtf_deb_usbd(&cardp->udev->dev,
-			"libertastf: unknown command type 0x%X\n", recvtype);
+					  "libertastf: unknown command type 0x%X\n", recvtype);
 		kfree_skb(skb);
 		break;
 	}
@@ -721,7 +778,7 @@ setup_for_next:
  *  Returns: 0 on success, nonzero otherwise
  */
 static int if_usb_host_to_card(struct lbtf_private *priv, uint8_t type,
-			       uint8_t *payload, uint16_t nb)
+							   uint8_t *payload, uint16_t nb)
 {
 	struct if_usb_card *cardp = priv->card;
 	u8 data = 0;
@@ -729,9 +786,12 @@ static int if_usb_host_to_card(struct lbtf_private *priv, uint8_t type,
 	lbtf_deb_usbd(&cardp->udev->dev, "*** type = %u\n", type);
 	lbtf_deb_usbd(&cardp->udev->dev, "size after = %d\n", nb);
 
-	if (type == MVMS_CMD) {
+	if (type == MVMS_CMD)
+	{
 		*(__le32 *)cardp->ep_out_buf = cpu_to_le32(CMD_TYPE_REQUEST);
-	} else {
+	}
+	else
+	{
 		*(__le32 *)cardp->ep_out_buf = cpu_to_le32(CMD_TYPE_DATA);
 		data = 1;
 	}
@@ -739,7 +799,7 @@ static int if_usb_host_to_card(struct lbtf_private *priv, uint8_t type,
 	memcpy((cardp->ep_out_buf + MESSAGE_HEADER_LEN), payload, nb);
 
 	return usb_tx_block(cardp, cardp->ep_out_buf, nb + MESSAGE_HEADER_LEN,
-			    data);
+						data);
 }
 
 /**
@@ -764,7 +824,6 @@ static int if_usb_issue_boot_command(struct if_usb_card *cardp, int ivalue)
 	return 0;
 }
 
-
 /**
  *  check_fwfile_format - Check the validity of Boot2/FW image.
  *
@@ -782,12 +841,14 @@ static int check_fwfile_format(const u8 *data, u32 totlen)
 	ret = 1;
 	exit = len = 0;
 
-	do {
-		struct fwheader *fwh = (void *) data;
+	do
+	{
+		struct fwheader *fwh = (void *)data;
 
 		bincmd = le32_to_cpu(fwh->dnldcmd);
 		blksize = le32_to_cpu(fwh->datalength);
-		switch (bincmd) {
+		switch (bincmd)
+		{
 		case FW_HAS_DATA_TO_RECV:
 			offset = sizeof(struct fwheader) + blksize;
 			data += offset;
@@ -813,7 +874,6 @@ static int check_fwfile_format(const u8 *data, u32 totlen)
 	return ret;
 }
 
-
 static int if_usb_prog_firmware(struct if_usb_card *cardp)
 {
 	int i = 0;
@@ -824,7 +884,8 @@ static int if_usb_prog_firmware(struct if_usb_card *cardp)
 
 	kparam_block_sysfs_write(fw_name);
 	ret = request_firmware(&cardp->fw, lbtf_fw_name, &cardp->udev->dev);
-	if (ret < 0) {
+	if (ret < 0)
+	{
 		pr_err("request_firmware() failed with %#x\n", ret);
 		pr_err("firmware %s not found\n", lbtf_fw_name);
 		kparam_unblock_sysfs_write(fw_name);
@@ -836,27 +897,32 @@ static int if_usb_prog_firmware(struct if_usb_card *cardp)
 		goto release_fw;
 
 restart:
-	if (if_usb_submit_rx_urb_fwload(cardp) < 0) {
+	if (if_usb_submit_rx_urb_fwload(cardp) < 0)
+	{
 		lbtf_deb_usbd(&cardp->udev->dev, "URB submission is failed\n");
 		ret = -1;
 		goto release_fw;
 	}
 
 	cardp->bootcmdresp = 0;
-	do {
+	do
+	{
 		int j = 0;
 		i++;
 		/* Issue Boot command = 1, Boot from Download-FW */
 		if_usb_issue_boot_command(cardp, BOOT_CMD_FW_BY_USB);
 		/* wait for command response */
-		do {
+		do
+		{
 			j++;
 			msleep_interruptible(100);
 		} while (cardp->bootcmdresp == 0 && j < 10);
 	} while (cardp->bootcmdresp == 0 && i < 5);
 
-	if (cardp->bootcmdresp <= 0) {
-		if (--reset_count >= 0) {
+	if (cardp->bootcmdresp <= 0)
+	{
+		if (--reset_count >= 0)
+		{
 			if_usb_reset_device(cardp);
 			goto restart;
 		}
@@ -878,14 +944,16 @@ restart:
 
 	/* ... and wait for the process to complete */
 	wait_event_interruptible(cardp->fw_wq, cardp->priv->surpriseremoved ||
-					       cardp->fwdnldover);
+											   cardp->fwdnldover);
 
 	del_timer_sync(&cardp->fw_timeout);
 	usb_kill_urb(cardp->rx_urb);
 
-	if (!cardp->fwdnldover) {
+	if (!cardp->fwdnldover)
+	{
 		pr_info("failed to load fw, resetting device!\n");
-		if (--reset_count >= 0) {
+		if (--reset_count >= 0)
+		{
 			if_usb_reset_device(cardp);
 			goto restart;
 		}
@@ -897,18 +965,17 @@ restart:
 
 	cardp->priv->fw_ready = 1;
 
- release_fw:
+release_fw:
 	release_firmware(cardp->fw);
 	cardp->fw = NULL;
 
 	if_usb_setup_firmware(cardp->priv);
 
- done:
+done:
 	lbtf_deb_leave_args(LBTF_DEB_USB, "ret %d", ret);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(if_usb_prog_firmware);
-
 
 #define if_usb_suspend NULL
 #define if_usb_resume NULL
