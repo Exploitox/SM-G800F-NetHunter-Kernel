@@ -5,6 +5,7 @@
 
 #include <linux/bitmap.h>
 #include <linux/if.h>
+#include <linux/ip.h>
 #include <linux/netdevice.h>
 #include <linux/rcupdate.h>
 #include <linux/timer.h>
